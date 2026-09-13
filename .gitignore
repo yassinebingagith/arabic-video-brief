@@ -1,0 +1,65 @@
+# ==========================================
+# Arabic Video Brief - .gitignore
+# ==========================================
+
+# 1. Environment Secrets & Credentials (CRITICAL)
+.env
+.env.local
+.env.*.local
+
+# 2. Browser Session & Login State (CRITICAL: Contains your active login cookies!)
+assets/browser_profile/
+browser_profile/
+
+# 3. Python Virtual Environment & Dependencies
+.venv/
+env/
+venv/
+ENV/
+
+# 4. Generated Video Outputs & Large Media
+outputs/
+work/
+
+# 5. Compiled Binaries & Large Tools (ffmpeg is 88MB, install via setup script)
+bin/ffmpeg.exe
+bin/*.exe
+
+# 6. Test Outputs & Temporary Caches
+tests_output/
+.pytest_cache/
+.pytest_temp/
+.coverage
+htmlcov/
+*.log
+*.tmp
+*.bak
+
+# 7. Python Bytecode, Cache & Packaging
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# 8. Temporary / Scratch Research & Workspace Dumps
+scratch/
+artifacts/
+scripts/candidates.json
+scripts/candidates_summary.txt
+scripts/targeted_summary.txt
+scripts/top10_verified.json
+scratch_*.json
+scratch_*.txt
+*.candidates.json
+all_2026_candidates.json
+analysis_output.txt
+carl_jung_full_stream.json
+top10_*.json
+top_candidates_preview.txt
+
+# 9. Operating System Junk
+.DS_Store
+Thumbs.db
+Desktop.ini

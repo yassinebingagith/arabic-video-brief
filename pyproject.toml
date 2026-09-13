@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arabic-video-brief"
+version = "0.1.0"
+description = "Create silent 15-second Arabic vertical video briefs"
+requires-python = ">=3.11"
+dependencies = [
+  "arabic-reshaper>=3.0.0",
+  "google-genai>=1.30.0",
+  "imageio-ffmpeg>=0.6.0",
+  "Pillow>=11.0.0",
+  "python-bidi>=0.6.6",
+  "yt-dlp>=2025.1.26",
+]
+
+[project.optional-dependencies]
+vision = ["opencv-python-headless>=4.11.0"]
+test = ["pytest>=8.3.0", "PyYAML>=6.0.2"]
+publisher = ["playwright>=1.40.0"]
+
+
+[project.scripts]
+avbrief = "arabic_video_brief.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"

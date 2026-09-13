@@ -1,0 +1,6 @@
+interface:
+  display_name: "Arabic Video Brief"
+  short_description: "Turn videos into silent Arabic vertical briefs"
+  default_prompt: "Use $arabic-video-brief to create a 15-second Arabic video brief from my source."
+policy:
+  allow_implicit_invocation: true
