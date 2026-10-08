@@ -117,3 +117,12 @@ def test_v2_render_integration(tmp_path: Path):
     assert info.width == 1080
     assert info.height == 1920
     assert abs(info.duration - settings.duration_v2) < 0.2
+
+    # Verify anti-bot CapCut metadata spoofing & absence of FFmpeg/Lavf markers
+    import subprocess
+    probe_proc = subprocess.run([ffmpeg, "-hide_banner", "-i", str(output_video)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    probe_output = probe_proc.stderr
+    assert "major_brand     : mp42" in probe_output or "major_brand: mp42" in probe_output
+    assert "CapCut" in probe_output
+    assert "Lavf" not in probe_output
+    assert "Lavc" not in probe_output

@@ -278,19 +278,34 @@ def build_v2_editorial_package(
     Takes the base 140-160 word summary, splits into 4 complete-sentence pages,
     creates Option 3 voiceover text (Title + Suffix), and generates the conclusion & CTA.
     """
-    raw_title = str(metadata.get("title") or "").strip()
     orig_title = str(metadata.get("original_title") or "").strip()
-    if re.search(r"[\u0600-\u06FF]", orig_title):
-        post_title_ar = re.sub(r"#\b(?:shorts?|يوتيوب_عربي)\b", "", orig_title, flags=re.IGNORECASE).strip()
-    elif re.search(r"[\u0600-\u06FF]", raw_title):
-        post_title_ar = re.sub(r"#\b(?:shorts?|يوتيوب_عربي)\b", "", raw_title, flags=re.IGNORECASE).strip()
+    raw_title = str(metadata.get("title") or "").strip()
+    target_orig_ar = orig_title if re.search(r"[\u0600-\u06FF]", orig_title) else (raw_title if re.search(r"[\u0600-\u06FF]", raw_title) else "")
+
+    # Rule: If the YouTube video is originally titled in Arabic, ALWAYS preserve it verbatim!
+    if target_orig_ar:
+        clean_ar = re.sub(r"#\b(?:shorts?|يوتيوب_عربي)\b", "", target_orig_ar, flags=re.IGNORECASE).strip()
+        clean_ar = re.sub(r"^(?:(?:\d+|#\d+)[\.\-:\s]+|(?:الحلقة|حلقة|episode|ep)[\.\-:\s]*\d+[\.\-:\s]*)", "", clean_ar, flags=re.IGNORECASE).strip()
+        post_title_ar = clean_ar
+    elif base_analysis.get("post_title_ar"):
+        post_title_ar = str(base_analysis["post_title_ar"]).strip()
+    elif base_analysis.get("post_title"):
+        post_title_ar = str(base_analysis["post_title"]).strip()
+    elif base_analysis.get("title") and re.search(r"[\u0600-\u06FF]", str(base_analysis.get("title"))):
+        post_title_ar = str(base_analysis["title"]).strip()
     else:
-        post_title_ar = base_analysis.get("post_title_ar") or raw_title
-    summary_ar = base_analysis.get("summary_ar", "").strip()
+        post_title_ar = raw_title
+    summary_ar = base_analysis.get("summary_ar", "").strip().replace("{", "").replace("}", "")
 
     # If pages are already pre-computed in base_analysis (e.g. Brainstorm mode), use them directly
     if base_analysis.get("pages") and len(base_analysis["pages"]) == 4:
-        four_pages = list(base_analysis["pages"])
+        raw_pages = list(base_analysis["pages"])
+        four_pages = [
+            str(p.get("text", "") if isinstance(p, dict) else p).strip().replace("{", "").replace("}", "")
+            for p in raw_pages
+        ]
+        if not summary_ar:
+            summary_ar = "\n\n".join(four_pages)
     else:
         # Base summary must have two semantic halves
         paragraphs = [p.strip() for p in summary_ar.split("\n") if p.strip()]
@@ -316,25 +331,48 @@ def build_v2_editorial_package(
     clean_title_for_tts = re.sub(r"[.!؟?\-_|]+$", "", post_title_ar).strip()
     voiceover_tts = f"{clean_title_for_tts}... {VOICEOVER_SUFFIX}."
 
-    hook = HookCandidate(
-        display_hook=clean_title_for_tts,
-        highlight_phrase=VOICEOVER_SUFFIX,
-        tts_text=voiceover_tts,
-        category="صوت افتتاحي",
-        scores={"relevance": 10.0},
-        total_score=100.0,
-        explanation="Direct title + Option 3 voiceover hook",
-    )
+    if base_analysis.get("hook") and isinstance(base_analysis["hook"], dict):
+        hook_dict = base_analysis["hook"]
+        hook = HookCandidate(
+            display_hook=str(hook_dict.get("display") or clean_title_for_tts).strip(),
+            highlight_phrase=str(hook_dict.get("highlight") or VOICEOVER_SUFFIX).strip(),
+            tts_text=str(hook_dict.get("tts") or voiceover_tts).strip(),
+            category=str(hook_dict.get("category") or "صوت افتتاحي").strip(),
+            scores={"relevance": 10.0},
+            total_score=100.0,
+            explanation="Pre-computed custom hook",
+        )
+        voiceover_tts = hook.tts_text
+        clean_title_for_tts = hook.display_hook
+    else:
+        hook = HookCandidate(
+            display_hook=clean_title_for_tts,
+            highlight_phrase=VOICEOVER_SUFFIX,
+            tts_text=voiceover_tts,
+            category="صوت افتتاحي",
+            scores={"relevance": 10.0},
+            total_score=100.0,
+            explanation="Direct title + Option 3 voiceover hook",
+        )
 
     if base_analysis.get("conclusion"):
-        conclusion = str(base_analysis["conclusion"]).strip()
-        conclusion_hl = list(base_analysis.get("conclusion_highlights") or ["الوعي", "التغيير"])
-        cta_save = str(base_analysis.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
-        cta_desc = str(base_analysis.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
+        raw_conclusion = base_analysis["conclusion"]
+        if isinstance(raw_conclusion, dict):
+            conclusion = str(raw_conclusion.get("text", "")).strip().replace("{", "").replace("}", "")
+            conclusion_hl = [str(h).replace("{", "").replace("}", "") for h in (raw_conclusion.get("highlights") or ["الوعي", "التغيير"])]
+            cta_save = str(raw_conclusion.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
+            cta_desc = str(raw_conclusion.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
+        else:
+            conclusion = str(raw_conclusion).strip().replace("{", "").replace("}", "")
+            conclusion_hl = [str(h).replace("{", "").replace("}", "") for h in (base_analysis.get("conclusion_highlights") or ["الوعي", "التغيير"])]
+            cta_save = str(base_analysis.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
+            cta_desc = str(base_analysis.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
     else:
         conclusion, conclusion_hl, cta_save, cta_desc = generate_v2_conclusion_and_cta(
             metadata, summary_ar, four_pages, settings
         )
+        conclusion = conclusion.replace("{", "").replace("}", "")
+        conclusion_hl = [h.replace("{", "").replace("}", "") for h in conclusion_hl]
 
     creative_plan = {
         "version": "v2",
@@ -354,6 +392,9 @@ def build_v2_editorial_package(
             "cta_description": cta_desc,
         },
     }
+
+    if base_analysis.get("thumbnail_concept") or base_analysis.get("visual_concept"):
+        creative_plan["thumbnail_concept"] = base_analysis.get("thumbnail_concept") or base_analysis.get("visual_concept")
 
     return V2EditorialPackage(
         post_title_ar=post_title_ar,

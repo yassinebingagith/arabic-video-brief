@@ -29,6 +29,7 @@ bin/*.exe
 tests_output/
 .pytest_cache/
 .pytest_temp/
+.pytest_thumb_temp/
 .coverage
 htmlcov/
 *.log

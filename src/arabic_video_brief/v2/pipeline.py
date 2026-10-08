@@ -33,6 +33,8 @@ def process_source_v2(
     force: bool = False,
     no_tts: bool = False,
     analysis_override: dict[str, Any] | None = None,
+    generate_thumbnails: bool | str = False,
+    generate_deepdive: bool = False,
 ) -> dict[str, Any]:
     """
     Processes a source into a V2 Arabic Video Brief (26.0s timeline):
@@ -86,7 +88,8 @@ def process_source_v2(
         parent_dir = output_root / slug
         v2_dir = parent_dir / "v2"
 
-        if v2_dir.exists() and (v2_dir / "brief.mp4").exists() and not force:
+        has_existing_video = (v2_dir / "brief.mp4").exists() or any(v2_dir.glob("CapCut_1080p_*.mp4"))
+        if v2_dir.exists() and has_existing_video and not force:
             logger.info("V2 output folder already exists: %s. Use --force to overwrite.", v2_dir)
             manifest_p = v2_dir / "manifest.json"
             if manifest_p.exists():
@@ -178,17 +181,39 @@ def process_source_v2(
             "reason": "Top panel video stream playback",
         }
 
-        final_video_path = v2_dir / "brief.mp4"
+        # Anti-Bot Authentic CapCut Filename Staging:
+        import datetime
+        import shutil
+        date_str = datetime.datetime.now().strftime("%Y%m%d")
+        raw_slug = slugify(post_title)
+        if not raw_slug or len(raw_slug) < 3:
+            raw_slug = slugify(title)
+        short_slug = raw_slug[:45].rstrip("-_")
+        capcut_name = f"CapCut_1080p_{date_str}_{short_slug}.mp4"
+        staged_video_path = v2_dir / capcut_name
+
+        temp_render_path = v2_dir / "brief.mp4"
         render_details = render_v2_video(
             source=local_video,
             thumbnail=thumbnail,
             editorial=editorial,
             selected_clip=selected_clip,
-            output=final_video_path,
+            output=temp_render_path,
             settings=settings,
             hook_audio_path=hook_audio_path if has_hook_audio else None,
             metadata=metadata,
         )
+
+        # Immediately stage to authentic CapCut client filename and delete brief.mp4
+        if temp_render_path.is_file():
+            try:
+                temp_render_path.rename(staged_video_path)
+            except Exception:
+                shutil.copyfile(str(temp_render_path), str(staged_video_path))
+                temp_render_path.unlink(missing_ok=True)
+            if temp_render_path.is_file():
+                temp_render_path.unlink(missing_ok=True)
+        final_video_path = staged_video_path
 
         # Stage 5: Write Output Files
         summary_path = v2_dir / "summary-ar.txt"
@@ -236,6 +261,51 @@ def process_source_v2(
         transcript_path = v2_dir / "transcript.json"
         write_json(transcript_path, metadata.get("transcript") or [])
 
+        # Preserve source thumbnail in output directory
+        source_thumb_dest = None
+        if thumbnail and thumbnail.is_file():
+            source_thumb_dest = v2_dir / f"source_thumbnail{thumbnail.suffix.lower()}"
+            if not source_thumb_dest.exists() or source_thumb_dest.resolve() != thumbnail.resolve():
+                try:
+                    shutil.copyfile(str(thumbnail), str(source_thumb_dest))
+                except Exception:
+                    pass
+
+        # Optional high-CTR thumbnail & photo prompts generation
+        fb_prompt_p: str | None = None
+        vert_prompt_p: str | None = None
+        is_thumb_enabled = generate_thumbnails and str(generate_thumbnails).lower() not in ("none", "false", "0")
+        if is_thumb_enabled:
+            try:
+                from ..thumbnail import process_folder_thumbnails
+                use_kieai = str(generate_thumbnails).lower() == "kieai"
+                fb_p, vert_p, _ = process_folder_thumbnails(
+                    v2_dir,
+                    manifest_data={"metadata": metadata, "source": source},
+                    generate_kieai=use_kieai,
+                    include_facebook=generate_deepdive,
+                )
+                fb_prompt_p = str(fb_p) if fb_p else None
+                vert_prompt_p = str(vert_p)
+            except Exception as exc:
+                logger.warning("Failed to generate thumbnails: %s", exc)
+
+        # Optional exhaustive Deep-Dive Educational Synthesis (ملخص معرفي مطوّل وشامل)
+        deepdive_p: str | None = None
+        if generate_deepdive:
+            try:
+                from ..deepdive import generate_deepdive_summary
+                dd_file = generate_deepdive_summary(
+                    output_dir=v2_dir,
+                    transcript_source=metadata.get("transcript") or analysis.get("transcript") or transcript_path,
+                    settings=settings,
+                    metadata=metadata,
+                    override_text=analysis_override.get("deep_dive_summary") if analysis_override else None,
+                )
+                deepdive_p = str(dd_file)
+            except Exception as exc:
+                logger.warning("Failed to generate deep-dive synthesis: %s", exc)
+
         manifest_path = v2_dir / "manifest.json"
         manifest = {
             "status": "success",
@@ -268,6 +338,7 @@ def process_source_v2(
                 "summary_pages": str(summary_pages_path),
                 "post_title": str(post_title_path),
                 "post_description": str(post_desc_path),
+                "deep_dive_summary": deepdive_p,
                 "hook_ar": str(hook_ar_path),
                 "hook_tts": str(hook_tts_path),
                 "hook_voice": str(hook_audio_path) if has_hook_audio else None,
@@ -275,6 +346,9 @@ def process_source_v2(
                 "cta_ar": str(cta_ar_path),
                 "creative_plan": str(creative_plan_path),
                 "transcript": str(transcript_path),
+                "source_thumbnail": str(source_thumb_dest) if source_thumb_dest and source_thumb_dest.exists() else None,
+                "thumbnail_prompt_fb": fb_prompt_p,
+                "thumbnail_prompt_vertical": vert_prompt_p,
                 "manifest": str(manifest_path),
             },
         }
@@ -293,6 +367,8 @@ def run_batch_v2(
     force: bool = False,
     no_tts: bool = False,
     analysis_override: dict[str, Any] | None = None,
+    generate_thumbnails: bool | str = False,
+    generate_deepdive: bool = False,
 ) -> dict[str, Any]:
     from ..utils import deduplicate_sources
     unique_sources = deduplicate_sources(sources)
@@ -307,6 +383,8 @@ def run_batch_v2(
                 force=force,
                 no_tts=no_tts,
                 analysis_override=analysis_override,
+                generate_thumbnails=generate_thumbnails,
+                generate_deepdive=generate_deepdive,
             )
             results.append(res)
         except Exception as error:

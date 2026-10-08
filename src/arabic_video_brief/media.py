@@ -70,7 +70,7 @@ def _extract_captions(auto_subs: dict[str, Any] | None) -> str:
         return ""
     import json
     from urllib.request import Request, urlopen
-    for lang in ("en", "en-US", "en-GB", "ar"):
+    for lang in ("en-orig", "ar-orig", "en", "en-US", "en-GB", "ar"):
         formats = auto_subs.get(lang) or []
         json3 = next((s for s in formats if s.get("ext") == "json3"), None)
         if json3 and json3.get("url"):
@@ -101,7 +101,7 @@ def download_youtube(url: str, work_dir: Path, download_seconds: float = 40.0) -
     options = {
         "format": "bestvideo[ext=mp4][height<=720]/bestvideo[height<=720]",
         "download_ranges": download_range_func(None, [(0, int(download_seconds))]),
-        "force_keyframes_at_cuts": True,
+        "force_keyframes_at_cuts": False,
         "outtmpl": str(work_dir / "source.%(ext)s"),
         "writethumbnail": True,
         "writeinfojson": False,
@@ -992,7 +992,7 @@ def render_video(
 ) -> dict[str, Any]:
     ffmpeg = find_ffmpeg()
     output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="avbrief-render-", dir=output.parent) as temp_name:
+    with tempfile.TemporaryDirectory(prefix="avbrief-render-", dir=output.parent, ignore_cleanup_errors=True) as temp_name:
         temp = Path(temp_name)
         if thumbnail is None or not thumbnail.exists():
             thumbnail = temp / "fallback-thumbnail.jpg"
@@ -1117,14 +1117,32 @@ def render_video(
 
         if music_track and has_outro:
             music_idx = next_input_idx
+            import datetime
+            now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            seed_val = sum(ord(c) for c in str(output.name or "v1"))
+            tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
+            outro_jitter = 1.084 * (1.002 - ((seed_val % 5) * 0.001))
+
+            capcut_flags = [
+                "-map_metadata", "-1",
+                "-fflags", "+bitexact",
+                "-flags:v", "+bitexact",
+                "-flags:a", "+bitexact",
+                "-metadata:s:v:0", "encoder=CapCut",
+                "-metadata", "encoder=CapCut",
+                "-metadata", "comment=CapCut",
+                "-metadata", f"creation_time={now_iso}",
+                "-brand", "mp42",
+            ]
+
             next_input_idx += 1
             outro_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{music_idx}:a]atrim=duration=20.0,volume={settings.music_volume},"
+                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration=20.0,volume={settings.music_volume},"
                 f"afade=t=out:st=18.0:d=2.0,"
                 f"apad=whole_dur={settings.duration}[bg_music];"
-                f"[{outro_idx}:a]atempo=1.084,volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration}[outro_voice];"
+                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration}[outro_voice];"
                 f"[bg_music][outro_voice]amix=inputs=2:duration=first:dropout_transition=0,"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
             )
@@ -1135,14 +1153,33 @@ def render_video(
                 "-t", f"{settings.duration}",
                 "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
+                *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
+                "-metadata:s:a:0", "encoder=CapCut",
                 "-movflags", "+faststart", "-y", str(output),
             ])
         elif music_track:
+            import datetime
+            now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            seed_val = sum(ord(c) for c in str(output.name or "v1"))
+            tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
+
+            capcut_flags = [
+                "-map_metadata", "-1",
+                "-fflags", "+bitexact",
+                "-flags:v", "+bitexact",
+                "-flags:a", "+bitexact",
+                "-metadata:s:v:0", "encoder=CapCut",
+                "-metadata", "encoder=CapCut",
+                "-metadata", "comment=CapCut",
+                "-metadata", f"creation_time={now_iso}",
+                "-brand", "mp42",
+            ]
+
             music_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{music_idx}:a]atrim=duration=20.0,volume={settings.music_volume},"
+                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration=20.0,volume={settings.music_volume},"
                 f"afade=t=out:st=18.0:d=2.0,"
                 f"apad=whole_dur={settings.duration},"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
@@ -1154,14 +1191,33 @@ def render_video(
                 "-t", f"{settings.duration}",
                 "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
+                *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
+                "-metadata:s:a:0", "encoder=CapCut",
                 "-movflags", "+faststart", "-y", str(output),
             ])
         elif has_outro:
+            import datetime
+            now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            seed_val = sum(ord(c) for c in str(output.name or "v1"))
+            outro_jitter = 1.084 * (1.002 - ((seed_val % 5) * 0.001))
+
+            capcut_flags = [
+                "-map_metadata", "-1",
+                "-fflags", "+bitexact",
+                "-flags:v", "+bitexact",
+                "-flags:a", "+bitexact",
+                "-metadata:s:v:0", "encoder=CapCut",
+                "-metadata", "encoder=CapCut",
+                "-metadata", "comment=CapCut",
+                "-metadata", f"creation_time={now_iso}",
+                "-brand", "mp42",
+            ]
+
             outro_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{outro_idx}:a]atempo=1.084,volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration},"
+                f";[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration},"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
             )
             command_final.extend(["-i", str(outro_voice)])
@@ -1171,16 +1227,33 @@ def render_video(
                 "-t", f"{settings.duration}",
                 "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
+                *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
+                "-metadata:s:a:0", "encoder=CapCut",
                 "-movflags", "+faststart", "-y", str(output),
             ])
         else:
+            import datetime
+            now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+            capcut_flags = [
+                "-map_metadata", "-1",
+                "-fflags", "+bitexact",
+                "-flags:v", "+bitexact",
+                "-flags:a", "+bitexact",
+                "-metadata:s:v:0", "encoder=CapCut",
+                "-metadata", "encoder=CapCut",
+                "-metadata", "comment=CapCut",
+                "-metadata", f"creation_time={now_iso}",
+                "-brand", "mp42",
+            ]
+
             command_final.extend([
                 "-filter_complex", filter_str,
                 "-map", "[out]",
                 "-t", f"{settings.duration}",
                 "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps), "-an",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
+                *capcut_flags,
                 "-movflags", "+faststart", "-y", str(output),
             ])
 

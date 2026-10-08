@@ -32,7 +32,7 @@ Return only a valid JSON object with the following fields:
 5. `post_description`: An in-depth, addictive narrative article in simplified Modern Fusha structured in this exact format:
    - Line 1: Specific Arabic topic title followed by an en-dash and speaker/channel name (e.g. `خمس وظائف فقط ستصمد أمام الذكاء الاصطناعي بحلول 2030 – د. رومان يامبولسكي`). Do NOT output literal placeholder text like "عنوان الموضوع".
    - Opening paragraph: Addictive, relatable hook (around 220-270 characters) drawing the reader into the topic immediately. No meta-talk.
-   - 3 to 4 comprehensive thematic sections, each starting with `-عنوان المحور الوصفي-` followed by detailed explanatory paragraphs (each section around 350-450 characters).
+   - 3 to 4 comprehensive thematic sections, each starting with elegant diamond bullets `◈ عنوان المحور الوصفي ◈` followed by detailed explanatory paragraphs (each section around 350-450 characters). Strictly avoid hyphens around headers (such as -عنوان-) to eliminate YouTube strikethrough bugs.
    - Real examples requirement: In every section, include concrete real-world examples (mentioning specific professions, everyday scenarios, real mechanisms) rather than speaking in vague generalities.
    - Final section: Practical pro-tips / action steps (or deep future implications if purely informative).
    - Do NOT include chapters, timestamps, bullet points, or score labels.

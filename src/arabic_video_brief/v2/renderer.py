@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -211,7 +212,8 @@ def render_v2_summary_page(
     except (AttributeError, OSError, ValueError):
         pass
 
-    lines = _wrap_rtl(text, body_font, max_text_width)
+    clean_text = text.replace("{", "").replace("}", "")
+    lines = _wrap_rtl(clean_text, body_font, max_text_width)
     line_h = math.ceil(body_font_size * 1.55)
     total_text_h = len(lines) * line_h
 
@@ -275,17 +277,19 @@ def render_v2_conclusion_page(
     except (AttributeError, OSError, ValueError):
         pass
 
-    conc_lines = _balance_wrap(conclusion_text, conc_font, max_safe_width)
+    clean_conc = conclusion_text.replace("{", "").replace("}", "")
+    conc_lines = _balance_wrap(clean_conc, conc_font, max_safe_width)
     conc_line_h = math.ceil(46 * 1.45)
     conc_y = panel_top + 45
 
+    clean_highlights = [h.replace("{", "").replace("}", "").strip() for h in conclusion_highlights]
     for line in conc_lines:
         vis = _display_text(line)
         box = draw.textbbox((0, 0), vis, font=conc_font)
         tw = box[2] - box[0]
         tx = (settings.width - tw) // 2
 
-        is_hl = any(h.strip() in line for h in conclusion_highlights if h.strip())
+        is_hl = any(h in line for h in clean_highlights if h)
         col = "#F5C518" if is_hl else "#FFFFFF"
 
         draw.text((tx + 2, conc_y + 2), vis, font=conc_font, fill="#000000")
@@ -469,7 +473,7 @@ def render_v2_video(
     total_duration = settings.duration_v2  # 26.0s
     start_time = float(selected_clip.get("start_seconds", 0.0))
 
-    with tempfile.TemporaryDirectory(prefix="avbrief-v2-render-", dir=output.parent) as temp_dir_str:
+    with tempfile.TemporaryDirectory(prefix="avbrief-v2-render-", dir=output.parent, ignore_cleanup_errors=True) as temp_dir_str:
         temp = Path(temp_dir_str)
 
         if thumbnail is None or not thumbnail.exists():
@@ -633,14 +637,22 @@ def render_v2_video(
                     voice_dur = max(2.0, min(10.5, float(vinfo.duration)))
                 except Exception:
                     voice_dur = 4.5
+
+                # Subtle deterministic micro-jitter (0.995-1.005) to randomize acoustic fingerprint
+                seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "v2"))
+                tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
+
                 filter_parts.append(
-                    f"[{music_idx}:a]volume='if(lt(t,{voice_dur:.2f}), 0.12, min(0.70, 0.12 + (0.70-0.12)*(t-{voice_dur:.2f})/0.6))':eval=frame,"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},"
+                    f"volume='if(lt(t,{voice_dur:.2f}), 0.12, min(0.70, 0.12 + (0.70-0.12)*(t-{voice_dur:.2f})/0.6))':eval=frame,"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[ducked_music]"
                 )
                 mix_inputs.append("[ducked_music]")
             else:
+                seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "v2"))
+                tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
                 filter_parts.append(
-                    f"[{music_idx}:a]volume={settings.music_volume},"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},volume={settings.music_volume},"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[bg_music]"
                 )
                 mix_inputs.append("[bg_music]")
@@ -658,8 +670,10 @@ def render_v2_video(
             final_cmd.extend(["-i", str(outro_voice)])
             outro_idx = next_input_idx
             next_input_idx += 1
+            seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "outro"))
+            outro_jitter = 1.084 * (1.002 - ((seed_val % 5) * 0.001))
             filter_parts.append(
-                f"[{outro_idx}:a]atempo=1.084,volume=1.1,adelay=28500|28500,apad=whole_dur={total_duration}[outro_audio]"
+                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.1,adelay=28500|28500,apad=whole_dur={total_duration}[outro_audio]"
             )
             mix_inputs.append("[outro_audio]")
 
@@ -686,20 +700,38 @@ def render_v2_video(
                 "-map", "[vout]", "-an",
             ])
 
+        import datetime
+        now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+
+        has_audio = bool(music_track or has_hook_audio or has_outro)
         final_cmd.extend([
             "-t", f"{total_duration}",
             "-frames:v", str(round(total_duration * settings.fps)),
             "-r", str(settings.fps),
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1",
             "-pix_fmt", "yuv420p",
+            # Strip FFmpeg / Lavf automation traces
+            "-map_metadata", "-1",
+            "-fflags", "+bitexact",
+            "-flags:v", "+bitexact",
+            "-flags:a", "+bitexact",
+            "-metadata:s:v:0", "encoder=CapCut",
+            "-metadata", "encoder=CapCut",
+            "-metadata", "comment=CapCut",
+            "-metadata", f"creation_time={now_iso}",
+            "-brand", "mp42",
         ])
 
-        if music_track or has_hook_audio or has_outro:
-            final_cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+        if has_audio:
+            final_cmd.extend([
+                "-c:a", "aac", "-b:a", "192k",
+                "-metadata:s:a:0", "encoder=CapCut",
+            ])
 
         final_cmd.extend(["-movflags", "+faststart", "-y", str(output)])
 
         _run(final_cmd, timeout=900)
+        time.sleep(0.5)
 
         return {
             "version": "v2",

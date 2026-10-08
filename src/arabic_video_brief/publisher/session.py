@@ -59,7 +59,7 @@ def persistent_browser_context(
         headless=headless,
         user_agent=DEFAULT_USER_AGENT,
         viewport=None,
-        args=[],
+        args=["--disable-session-crashed-bubble", "--hide-crash-restore-bubble"],
         ignore_default_args=["--enable-automation"],
         locale="en-US",
     )

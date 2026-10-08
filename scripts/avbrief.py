@@ -18,8 +18,9 @@ def main() -> int:
     if venv_python.exists() and Path(sys.executable).resolve() != venv_python.resolve():
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUNBUFFERED"] = "1"
         try:
-            return subprocess.call([str(venv_python), "-m", "arabic_video_brief", *sys.argv[1:]], cwd=project_root, env=env)
+            return subprocess.call([str(venv_python), "-u", "-m", "arabic_video_brief", *sys.argv[1:]], cwd=project_root, env=env)
         except KeyboardInterrupt:
             print("\nProcess interrupted by user.")
             return 0

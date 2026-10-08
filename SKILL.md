@@ -36,11 +36,51 @@ Prompt the user or accept `--version v1|v2`:
 Before processing videos, prompt the user with `ask_question` to select how transcription extraction, translation, and Arabic summarization should be processed:
 
 1. **(Recommended) Antigravity Brainstorm LLM:** Direct high-quality reasoning and synthesis with no external API cost.
-2. **SeekAI API (`deepseek-v4-flash`):** Uses SeekAI endpoint and credentials from `.env` (`Seekai_api` with model `deepseek-v4-flash`).
-3. **Gemini API:** Uses `GEMINI_API_KEY` (Free Tier) from `.env`.
+2. **VyceAI API:** Uses credentials from `.env` (`VyceAI_API_KEY` / `VyceAI_Model`).
+3. **Gemini API:** Uses `GEMINI_API_KEY` from `.env`.
+4. **SeekAI API (`deepseek-v4-flash`):** Uses SeekAI endpoint from `.env`.
 
 > [!IMPORTANT]
 > **Default Fallback:** If the user skips this question or leaves it unspecified, **automatically use the Antigravity Brainstorm LLM** as the default engine.
+
+### Step 3.2: Deep-Dive Educational Synthesis Decision Gate (ملخص معرفي مطوّل وشامل)
+
+Prompt the user with `ask_question`:
+> **"Generate exhaustive Deep-Dive Educational Synthesis (`deep_dive_summary.txt`) for this video/batch?"**
+- **Option 1: No (Default/Normal):** Process video without deep-dive synthesis. No extra file is created.
+- **Option 2: Yes:** A dedicated synthesis call executes the Senior Knowledge Architect & Content Strategist prompt on the full transcript, creating `deep_dive_summary.txt` in the folder without character limits. This text serves as the rich educational caption when posting Facebook Photo Posts (`--mode photo`).
+
+### Step 3.5: Thumbnail Generation Protocol (Thumbnail Master 4.0 Engine)
+
+Before processing or rendering assets, ask the user whether thumbnails are desired using a 2-tier question sequence:
+
+#### Question A: "Generate thumbnails for this video/batch?"
+- **Option 1: No (Default/Normal)**
+  - Process video normally without thumbnails, without API calls, without KIE.ai, and **without creating any thumbnail prompt `.txt` files**.
+- **Option 2: Yes**
+  - Proceed to Question B.
+
+#### Question B: "Thumbnail Generation Method:"
+- **Option 1: Manual Generation (Prompts only)**
+  - The engine generates high-CTR prompt files in the video folder:
+    - `thumbnail_prompt_facebook_4x5.txt` (1080×1350 for Facebook photo posts)
+    - `thumbnail_prompt_vertical_9x16.txt` (1080×1920 with 3:4/4:5 crop-proof safe margins)
+    - `THUMBNAIL_GUIDE.md`
+  - **4.0 Engine Capabilities**:
+    - **Focal Archetypes**: Automatically routes between *Emotive Portrait*, *Split-Screen Comparison*, *Symbolic Artifact*, *Dramatic Scene*, or *Conceptual Metaphor* based on topic.
+    - **Single Dominant Title**: Uses `post-title.txt` as the sole headline with dual-tone calligraphy (power-word highlighted in gold/crimson). No secondary conclusion text to clutter the image.
+    - **Feed Crop Proofing**: Title placed in upper safe zone (Y: 320–560) and bottom 25% kept strictly text-free to clear platform UI overlays (`▷ 515`, duration, usernames).
+    - **10 Visual Styles**: Full style menu with strict Anti-AI-Slop tactile texture enforcement.
+  - In chat, the agent **must remind the user** to generate their images externally and save them in the video folder under the required names:
+    - `cover_facebook_4x5.png` (or `.jpg`)
+    - `cover_vertical_9x16.png` (or `.jpg`)
+- **Option 2: KIE.ai API (Automated Image Generation & Sanitization)**
+  - The pipeline automatically submits the full master prompts to KIE.ai API (`gpt-image-2-5-sunburst-image-to-image`, 1K quality).
+  - Automatically downloads, scales, and crops to exact dimensions:
+    - `cover_facebook_4x5.png` (1080×1350)
+    - `cover_vertical_9x16.png` (1080×1920)
+    - `cover_vertical_9x16_yt_opt.jpg` (YouTube-optimized under 2MB)
+  - Automatically executes **Anti-AI Sanitization** (`sanitize_image(force=True)`) to strip C2PA provenance and AI metadata so Facebook/Instagram never flag the post as AI-generated.
 
 ### Step 4: Publishing Execution Protocol (Live Terminal vs. Background Service)
 
@@ -121,23 +161,37 @@ When the user asks to publish or upload a video (e.g., "publish this video", "up
 - In-depth, continuous narrative article style with descriptive thematic section headings in simplified Modern Fusha:
   - **Line 1:** `عنوان الموضوع الشامل بالعربية – اسم المتحدث أو القناة`
   - **Opening paragraph:** Addictive, relatable hook (around 220–270 characters) drawing the reader into the topic immediately with zero meta-talk.
-  - **Subsections:** 3 to 4 comprehensive thematic sections starting with standard descriptive headings (`-عنوان المحور الوصفي-`) followed by detailed explanatory paragraphs.
+  - **Subsections:** 3 to 4 comprehensive thematic sections starting with elegant diamond bullet headings (`◈ عنوان المحور الوصفي ◈`) followed by detailed explanatory paragraphs. Strictly avoid surrounding headings with hyphens (`-عنوان-`) to prevent YouTube's native strikethrough formatting bug.
   - **Mandatory Real-World Examples:** Every section must pack concrete, tangible examples (mentioning specific professions, everyday scenarios, real numbers, or tangible analogies) rather than speaking in vague generalities or academic theory.
   - **Final Section:** Concrete actionable pro-tips / practical steps (or deep future implications if purely informative).
   - **No chapters, no timestamps, no bullet points, and no hooks.**
-  - **Universal Subscription CTA at the end:** `🔔 تابعنا ليصلك يومياً ملخص لأهم المقاطع والبودكاست الفكرية والعلمية!`
-  - **Universal hashtags at the very end:** `#بودكاست #تطوير_الذات #فكر #ثقافة #معرفة #وعي` (strictly no `#shorts` or platform names so the content is universal across YouTube Shorts, TikTok, and Instagram Reels).
+  - **Dynamic Subscription CTA:** Varied call-to-action rotated across posts (e.g. `🔔 تابعنا ليصلك يومياً ملخص لأهم المقاطع والبودكاست الفكرية والعلمية!`, `✨ تابع الصفحة يومياً لاكتشاف أعمق الأفكار والملخصات المعرفية المركزة!`).
+  - **Dynamic Topic Hashtags:** 2–3 niche-specific hashtags matching the video's actual theme (e.g., `#علم_النفس`, `#فلسفة`, `#ذكاء_اصطناعي`, `#تاريخ`) combined with rotating broad hashtags (strictly no `#shorts` or platform names).
 - **CRITICAL CHARACTER LIMIT:**
   - Absolute maximum: **2,000 characters INCLUDING spaces**.
   - Preferred target: **1,750–1,950 characters including spaces**.
   - NEVER exceed 2,000 characters (Count letters, spaces, punctuation, line breaks, numbers, hashtags, title).
 
-### 4. Output Files Per Video
+### 3b. Deep-Dive Educational Synthesis (`deep_dive_summary.txt`)
 
-- `brief.mp4` (28s in V1 / 36.5s in V2 1080×1920 MP4 with background music and outro voiceover)
+- **Exhaustive, High-Prestige Long-Form Synthesis:** Designed for long-form consumption, executive takeaways, newsletter editions, and deep Facebook photo captions:
+  - **Human Prose with Zero AI Markers:** Strictly NO markdown header symbols (`#`, `##`, `###`), NO dividers (`---`), and NO bold asterisks (`**`). All emphasis is driven through rhetorical rhythm and eloquent phrasing.
+  - **Full Intellectual Depth & Concrete Data:** Preserves all exact percentages, statistics, numbers, timeframes, and specific case studies from the source transcript without superficial condensation.
+  - **Conceptual Reliability with English Terms:** Key technical frameworks, models, and coined terms must include their original English phrasing in parentheses `(...)` next to their Arabic names (e.g. `(Jay Shetty)`, `(The Power of Silence)`, `(Highlight Reel Syndrome)`, `(The Comparison Trap)`, `(The Rule of 5)`, `(Social Detox)`, `(Compounding Skills & Wealth)`).
+  - **Elegant Diamond Thematic Sections:** Uses clean line breaks and diamond symbols (`◈ [عنوان المحور الوصفي الجذاب]`) instead of robotic labels (`المحور الأول`, `النموذج النظري`, `التطبيق العملي`).
+  - **Narrative Actionable Roadmap:** Broken into coherent paragraphs with narrative transition words (`أولاً، ...`, `ثانياً، ...`, `ثالثاً، ...`) instead of dashed lists.
+  - **Organic Conclusion & Emotional Question:** Concludes with an uplifting philosophical summary flowing directly into a deep, introspective question (without any `سؤال التأمل:` label), followed by a warm, natural community call to action (commenting experiences, saving the summary for later, and sharing).
+
+### 4. Output Files & Anti-Bot Stealth Architecture
+
+- `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4` (28s in V1 / 36.5s in V2 1080×1920 MP4)
+  - **Strict Single-Video Anti-Bot Protocol:** Directly staged as `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4`. Any intermediate or temporary `brief.mp4` is **immediately deleted upon creation** so platforms never detect bot script filenames on disk or in file pickers.
+  - **Anti-Bot Container Spoofing:** Rendered with `-map_metadata -1`, `+bitexact`, `-metadata:s:v:0 encoder=CapCut`, `-metadata:s:a:0 encoder=CapCut`, `-metadata major_brand=mp42`, completely removing FFmpeg `Lavf`/`Lavc` traces.
+  - **Acoustic De-duplication:** Subtle imperceptible audio micro-jitter (±0.5%–1.0%) to prevent Content ID and platform algorithms from clustering videos as repeated duplicate templates.
 - `summary-ar.txt` (140–160 word Modern Standard Arabic abstract)
 - `post-title.txt` (Faithful Arabic translation of the YouTube title, clean without `#shorts`)
-- `post-description.txt` (In-depth narrative description under 2,000 chars, universal hashtags)
+- `post-description.txt` (In-depth narrative description under 2,000 chars, diamond headers `◈`, dynamic hashtags)
+- `deep_dive_summary.txt` (Exhaustive, human-written deep-dive synthesis with English parenthetical concepts, zero markdown signs/annotations, and organic CTA)
 - `transcript.json` (Transcript metadata)
 - `manifest.json` (Full job manifest)
 
@@ -157,17 +211,41 @@ python scripts/avbrief.py run --job jobs/love_and_trauma.json
 # Fast re-render of an existing brief folder without repeating analysis/LLM calls
 python scripts/avbrief.py rerender --folder "outputs/<folder>"
 
+# High-CTR Thumbnail & Photo Prompt Generation (Thumbnail Master 4.0)
+# Auto-skips 4:5 Facebook thumbnail if deep_dive_summary.txt is not requested, saving API tokens & credits
+python scripts/avbrief.py thumbnail --folder "outputs/<folder>"
+python scripts/avbrief.py thumbnail --folder "outputs/<folder>" --kieai
+# Optional flags: --facebook (force 4:5 FB generation) / --no-facebook (skip 4:5 FB generation)
+
+# Exhaustive Deep-Dive Educational Synthesis (deep_dive_summary.txt)
+python scripts/avbrief.py deepdive --folder "outputs/<folder>"
+python scripts/avbrief.py deepdive --folder "outputs/<folder>" --provider vyceai
+
+# Sanitize cover images: Eradicate C2PA provenance and AI metadata for untraceable organic posting
+python scripts/avbrief.py sanitize --folder "outputs/<folder>"
+
 # Social Media Publishing Automation (Playwright persistent profile)
 # 1. One-time interactive login to your accounts:
 python scripts/avbrief.py login [--platform all|youtube|tiktok|meta]
 
 # 2. Publish a specific video folder on-demand:
-python scripts/avbrief.py post --folder "outputs/Love and Trauma/<video_folder>" --platform all
-python scripts/avbrief.py post --folder "outputs/Love and Trauma/<video_folder>" --platform youtube
-python scripts/avbrief.py post --folder "outputs/Love and Trauma/<video_folder>" --platform tiktok
-python scripts/avbrief.py post --folder "outputs/Love and Trauma/<video_folder>" --platform meta
+# Video Reel publication (YouTube Shorts + TikTok + Meta [BOTH Facebook & Instagram simultaneously]):
+python scripts/avbrief.py post --folder "outputs/<video_folder>" --platform all
+python scripts/avbrief.py post --folder "outputs/<video_folder>" --platform youtube
+python scripts/avbrief.py post --folder "outputs/<video_folder>" --platform tiktok
+python scripts/avbrief.py post --folder "outputs/<video_folder>" --platform meta --mode video
+
+# Platform destination targeting on Meta:
+#   When user says "Meta" -> publishes to BOTH Facebook AND Instagram at the same time.
+#   When user says "Instagram" -> use '--target instagram' (Instagram ONLY).
+#   When user says "Facebook" (video) -> use '--target facebook' (Facebook ONLY).
+
+# Facebook Photo Post publication (Facebook ONLY with 4:5 image + deep-dive caption):
+python scripts/avbrief.py post --folder "outputs/<video_folder>" --platform meta --mode photo
 
 # Optional publish flags:
+#   --mode video|photo   Reel video (Facebook + Instagram) vs photo post (Facebook ONLY)
+#   --target meta|instagram|facebook Explicit destination override on Meta (default: meta for video, facebook for photo)
 #   --draft              Save as draft / unlisted instead of publishing now
 #   --schedule "YYYY-MM-DD HH:MM"  Schedule publication natively
 #   --force              Re-upload even if recorded as published

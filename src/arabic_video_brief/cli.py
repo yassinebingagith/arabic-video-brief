@@ -60,6 +60,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--model", type=str, help="LLM model name override (e.g. claude-sonnet-4-6, gpt-5.6-new)")
     run.add_argument("--no-tts", action="store_true", help="Render visual-only hook without ElevenLabs narration in V2")
     run.add_argument("--force", action="store_true", help="Force overwrite existing output folder")
+    run.add_argument("--thumbnails", nargs="?", const="manual", default="none", choices=["none", "manual", "kieai"], help="Thumbnail mode: none, manual (prompts only), or kieai (automated image-to-image + sanitization)")
+    run.add_argument("--deepdive", action="store_true", help="Generate exhaustive educational synthesis without character limits (deep_dive_summary.txt)")
 
     subparsers.add_parser("doctor", help="Check local dependencies and configuration")
 
@@ -68,7 +70,9 @@ def _parser() -> argparse.ArgumentParser:
 
     post = subparsers.add_parser("post", help="Publish a generated video brief folder")
     post.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
-    post.add_argument("--platform", choices=["all", "youtube", "tiktok", "meta"], default="all")
+    post.add_argument("--platform", default="all", help="Platform(s) to publish to: all, youtube, tiktok, meta, or comma-separated list (e.g. youtube,tiktok)")
+    post.add_argument("--mode", choices=["video", "photo"], default="video", help="Post type for Meta: video Reel or photo post")
+    post.add_argument("--target", choices=["instagram", "facebook", "both"], default=None, help="Explicit destination for Meta (defaults: instagram for reels, facebook for photo posts, both for Facebook+Instagram)")
     post.add_argument("--schedule", help="Optional schedule date/time, e.g. 'YYYY-MM-DD HH:MM'")
     post.add_argument("--draft", action="store_true", help="Save as unlisted/draft instead of publishing immediately")
     post.add_argument("--force", action="store_true", help="Re-post even if already recorded as published")
@@ -76,6 +80,22 @@ def _parser() -> argparse.ArgumentParser:
 
     rerender = subparsers.add_parser("rerender", help="Re-render an existing video brief folder without repeating analysis")
     rerender.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
+
+    thumb = subparsers.add_parser("thumbnail", help="Generate high-CTR thumbnail & photo prompts (4:5 FB and 9:16 vertical)")
+    thumb.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
+    thumb.add_argument("--style", type=str, help="Optional visual style override (cinematic, noir, futuristic, minimalist, split, abstract, high_energy, retro, 3d, hyper_real)")
+    thumb.add_argument("--archetype", choices=["portrait", "comparison", "artifact", "scene", "metaphor"], help="Optional focal archetype override")
+    thumb.add_argument("--kieai", action="store_true", help="Automatically generate images using KIE.ai API and sanitize")
+    thumb.add_argument("--facebook", default=None, action="store_true", help="Explicitly generate Facebook 4:5 thumbnail")
+    thumb.add_argument("--no-facebook", dest="facebook", action="store_false", help="Explicitly skip Facebook 4:5 thumbnail")
+
+    sanitize = subparsers.add_parser("sanitize", help="Eradicate C2PA provenance and AI metadata from cover images")
+    sanitize.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
+
+    deepdive = subparsers.add_parser("deepdive", help="Generate or regenerate exhaustive Deep-Dive Educational Synthesis (deep_dive_summary.txt)")
+    deepdive.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
+    deepdive.add_argument("--provider", choices=["vyceai", "seekai", "gemini", "apinex", "brainstorm"], help="LLM provider for synthesis")
+    deepdive.add_argument("--model", type=str, help="LLM model name override")
 
     return parser
 
@@ -149,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
                 draft=args.draft,
                 force=args.force,
                 headless=args.headless,
+                mode=getattr(args, "mode", "video"),
+                target=getattr(args, "target", None),
             )
             _print_json(report)
             failed_count = sum(1 for v in report.get("results", {}).values() if v.get("status") == "failed")
@@ -158,6 +180,75 @@ def main(argv: list[str] | None = None) -> int:
             from .rerender import rerender_folder
             result = rerender_folder(folder_path=args.folder, settings=settings)
             _print_json(result)
+            return 0
+
+        if args.command == "thumbnail":
+            from .thumbnail import process_folder_thumbnails
+            folder = args.folder.resolve()
+            has_dd = (
+                (folder / "deep_dive_summary.txt").is_file()
+                or (folder / "v2" / "deep_dive_summary.txt").is_file()
+                or (folder.parent / "deep_dive_summary.txt").is_file()
+            )
+            inc_fb = getattr(args, "facebook", None)
+            if inc_fb is None:
+                inc_fb = has_dd
+
+            fb_p, vert_p, guide_p = process_folder_thumbnails(
+                folder,
+                style_preference=getattr(args, "style", None),
+                archetype_preference=getattr(args, "archetype", None),
+                generate_kieai=getattr(args, "kieai", False),
+                include_facebook=inc_fb,
+            )
+            _print_json({
+                "status": "success",
+                "folder": str(folder),
+                "facebook_4x5_prompt": str(fb_p) if fb_p else None,
+                "vertical_9x16_prompt": str(vert_p),
+                "guide": str(guide_p),
+            })
+            return 0
+
+        if args.command == "sanitize":
+            from .thumbnail.sanitizer import sanitize_folder_images
+            cleaned = sanitize_folder_images(args.folder)
+            _print_json({
+                "status": "success",
+                "folder": str(args.folder),
+                "sanitized_images": [p.name for p in cleaned],
+                "ai_markers_removed": bool(cleaned),
+            })
+            return 0
+
+        if args.command == "deepdive":
+            from .deepdive import generate_deepdive_summary
+            folder = args.folder.resolve()
+            if not folder.is_dir():
+                raise FileNotFoundError(f"Directory not found: {folder}")
+            target_dir = folder / "v2" if (folder / "v2").is_dir() else folder
+            t_file = target_dir / "transcript.json" if (target_dir / "transcript.json").is_file() else folder / "transcript.json"
+            manifest_file = target_dir / "manifest.json" if (target_dir / "manifest.json").is_file() else folder / "manifest.json"
+            meta = {}
+            if manifest_file.is_file():
+                try:
+                    m_data = json.loads(manifest_file.read_text(encoding="utf-8"))
+                    meta = m_data.get("metadata", {})
+                except Exception:
+                    pass
+            out_p = generate_deepdive_summary(
+                output_dir=target_dir,
+                transcript_source=t_file,
+                settings=settings,
+                metadata=meta,
+                provider=getattr(args, "provider", None),
+                model=getattr(args, "model", None),
+            )
+            _print_json({
+                "status": "success",
+                "folder": str(target_dir),
+                "deep_dive_summary": str(out_p),
+            })
             return 0
 
         if getattr(args, "provider", None):
@@ -211,6 +302,28 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 selected_version = "v1"
 
+        # Step 2: Deep-Dive Educational Synthesis Decision Gate
+        generate_deepdive = getattr(args, "deepdive", False)
+        if not generate_deepdive and sys.stdin.isatty():
+            try:
+                ans_dd = input("\nGenerate exhaustive Deep-Dive Educational Synthesis (deep_dive_summary.txt for Facebook photo posts)? [y/N]: ").strip().lower()
+                generate_deepdive = ans_dd in ("y", "yes")
+            except (KeyboardInterrupt, EOFError):
+                generate_deepdive = False
+
+        # Step 3 & 4: Thumbnail Decision Gates
+        generate_thumbnails = getattr(args, "thumbnails", "none")
+        if (generate_thumbnails in ("none", None, False)) and sys.stdin.isatty():
+            try:
+                ans = input("\nGenerate high-CTR thumbnail & photo prompts (4:5 FB & 9:16 vertical)? [y/N]: ").strip().lower()
+                if ans in ("y", "yes"):
+                    method = input("  Choose generation method (1: Manual prompts, 2: Automatic KIE.ai) [default 2]: ").strip()
+                    generate_thumbnails = "manual" if method == "1" else "kieai"
+                else:
+                    generate_thumbnails = "none"
+            except (KeyboardInterrupt, EOFError):
+                generate_thumbnails = "none"
+
         if selected_version == "v2":
             from .v2.pipeline import run_batch_v2
             report = run_batch_v2(
@@ -221,9 +334,19 @@ def main(argv: list[str] | None = None) -> int:
                 force=getattr(args, "force", False),
                 no_tts=getattr(args, "no_tts", False),
                 analysis_override=analysis_override,
+                generate_thumbnails=generate_thumbnails,
+                generate_deepdive=generate_deepdive,
             )
         else:
-            report = run_batch(sources, output.resolve(), settings, keep_work=keep_work, analysis_override=analysis_override)
+            report = run_batch(
+                sources,
+                output.resolve(),
+                settings,
+                keep_work=keep_work,
+                analysis_override=analysis_override,
+                generate_thumbnails=generate_thumbnails,
+                generate_deepdive=generate_deepdive,
+            )
 
         _print_json(report)
         return 0 if report.get("failed", 0) == 0 else 1

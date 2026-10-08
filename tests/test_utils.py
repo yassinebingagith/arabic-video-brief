@@ -67,7 +67,12 @@ def test_generate_post_title_and_description_universality() -> None:
     assert "#shorts" not in desc
     assert "#short" not in desc
     assert "#يوتيوب_عربي" not in desc
-    assert "🔔 تابعنا ليصلك يومياً ملخص لأهم المقاطع والبودكاست الفكرية والعلمية!" in desc
-    assert "#بودكاست" in desc
-    assert "#تطوير_الذات" in desc
+    valid_ctas = [
+        "🔔 تابعنا ليصلك يومياً ملخص لأهم المقاطع والبودكاست الفكرية والعلمية!",
+        "✨ تابع الصفحة يومياً لاكتشاف أعمق الأفكار والملخصات المعرفية المركزة!",
+        "💡 للمزيد من الرؤى الفكرية والملخصات اليومية الملهمة، انضم إلى مجتمعنا وتابع الصفحة!",
+    ]
+    assert any(cta in desc for cta in valid_ctas)
+    assert "◈" in desc
+    assert "-جوهر القضية-" not in desc
     assert len(desc) <= 2000
