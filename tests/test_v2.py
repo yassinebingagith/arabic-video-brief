@@ -92,7 +92,7 @@ def test_v2_render_integration(tmp_path: Path):
             "الصفحة الرابعة تضع خطوات عملية للتحكم في الإضاءة والنوم.",
         ],
         hook=hook,
-        conclusion_ar="صباحك الأفضل يبدأ من الضوء الذي تخفّضه الليلة",
+        conclusion_ar="ما الذي ستغيّره في إضاءة غرفتك هذا المساء؟",
         conclusion_highlights=["صباحك", "الليلة"],
         cta_ar="احفظها لتجربها الليلة",
         cta_description="اقرأ الوصف للتفاصيل والخطوات الكاملة",
@@ -117,6 +117,19 @@ def test_v2_render_integration(tmp_path: Path):
     assert info.width == 1080
     assert info.height == 1920
     assert abs(info.duration - settings.duration_v2) < 0.2
+    assert render_details["timeline"] == {
+        "page_1": "0:00.0-0:10.8", "page_2": "0:10.8-0:18.6",
+        "page_3": "0:18.6-0:26.4", "page_4": "0:26.4-0:34.2",
+        "conclusion": "0:34.2-0:42.2",
+    }
+
+    # Both the retained short track and the new track must cover the longer reading section.
+    import array
+    audio = subprocess.run([ffmpeg, "-loglevel", "error", "-ss", "30", "-i", str(output_video),
+                            "-t", "2", "-vn", "-ac", "1", "-ar", "8000", "-f", "f32le", "-"],
+                           check=True, capture_output=True).stdout
+    samples = array.array("f", audio)
+    assert (sum(x*x for x in samples) / len(samples)) ** 0.5 > 0.001
 
     # Verify anti-bot CapCut metadata spoofing & absence of FFmpeg/Lavf markers
     import subprocess
@@ -126,3 +139,32 @@ def test_v2_render_integration(tmp_path: Path):
     assert "CapCut" in probe_output
     assert "Lavf" not in probe_output
     assert "Lavc" not in probe_output
+
+
+def test_v2_random_music_pool_keeps_both_tracks_and_excludes_v1(tmp_path, monkeypatch):
+    from arabic_video_brief.v2.renderer import select_v2_music
+    for name in ("naruto_sadness_and_sorrow.mp3", "godfather_0013.mp3", "andrea_vanzo_amelie_0030_0100.mp3"):
+        (tmp_path / name).write_bytes(b"fixture")
+    observed = []
+    def choose(items):
+        observed.extend(p.name for p in items)
+        return items[-1]
+    monkeypatch.setattr("random.choice", choose)
+    assert select_v2_music(tmp_path).name == "godfather_0013.mp3"
+    assert observed == ["naruto_sadness_and_sorrow.mp3", "godfather_0013.mp3"]
+
+
+def test_v2_timing_and_voiceover_preserve_reading_content():
+    import pytest
+    from arabic_video_brief.v2.editorial import build_v2_editorial_package, VOICEOVER_SUFFIX
+    settings = Settings()
+    bounds = settings.v2_page_boundaries
+    assert [bounds[i+1]-bounds[i] for i in range(4)] == pytest.approx([9*1.2, 6.5*1.2, 6.5*1.2, 6.5*1.2])
+    pages = ["مثال عربي مع الرقم 21."] * 4
+    result = build_v2_editorial_package({"post_title_ar": "عنوان الاختبار", "pages": pages,
+        "ending_question_ar": "أي فكرة ستجرب تطبيقها في حياتك اليوم؟",
+        "hook": {"tts": "النص القديم", "display": "العنوان المرئي"}}, {}, settings)
+    assert result.pages == pages
+    assert result.hook.display_hook == "العنوان المرئي"
+    assert result.hook.tts_text == f"عنوان الاختبار... {VOICEOVER_SUFFIX}."
+    assert VOICEOVER_SUFFIX == "ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف"

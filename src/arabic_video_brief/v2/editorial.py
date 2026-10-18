@@ -218,7 +218,7 @@ def split_half_into_two_pages(half_text: str, half_index: int, settings: Setting
     return [pa, pb]
 
 
-VOICEOVER_SUFFIX = "خلاصة الحوار وأبرز أسراره في ثوانٍ"
+VOICEOVER_SUFFIX = "ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف"
 
 
 def generate_v2_conclusion_and_cta(
@@ -227,45 +227,10 @@ def generate_v2_conclusion_and_cta(
     four_pages: list[str],
     settings: Settings,
 ) -> tuple[str, list[str], str, str]:
-    """
-    Generates a concise conclusion and save CTA (< 100 tokens total) with zero hook token overhead.
-    """
-    prompt = f"""
-أنت خبير محتوى عربي لفيديوهات السوشيال ميديا القصيرة.
-المطلوب صياغة خاتمة رنانة ودعوة للحفظ والمتابعة (CTA) لنهاية الفيديو بناءً على ملخص الصفحات:
-{' '.join(four_pages)}
-
-المطلوب بدقة واختصار:
-1. `conclusion`: جملة خاتمة عميقة ومحكمة لا تتجاوز 12 كلمة تلخص الجوهر المعرفي للفيديو وتترك أثراً قوياً.
-2. `conclusion_highlights`: قائمة بكلمة أو كلمتين مفتاحيتين من جملة الخاتمة ليتم تلوينهما بالذهبي.
-3. `cta_save`: احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد
-4. `cta_description`: السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇
-
-القاعدة الصارمة: يمنع منعاً باتاً دمج أو تكرار عبارة الوصف داخل `cta_save`. حقل `cta_save` مخصص فقط للحفظ والمشاركة ومتابعة الصفحة.
-
-أعد الناتج بصيغة JSON فقط:
-{{
-  "conclusion": "جملة الخاتمة",
-  "conclusion_highlights": ["كلمة1", "كلمة2"],
-  "cta_save": "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد",
-  "cta_description": "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇"
-}}
-""".strip()
-
-    raw_json = call_llm(prompt, settings, temperature=0.3)
-    data: dict[str, Any] = {}
-    try:
-        match = re.search(r"(\{.*\})", raw_json, re.DOTALL)
-        if match:
-            data = json.loads(match.group(1))
-    except Exception as err:
-        logger.warning("Failed to parse LLM conclusion JSON: %s", err)
-
-    conclusion = str(data.get("conclusion") or "حين يكتمل الوعي بالواقع، تبدأ الخطوات الحقيقية للتغيير").strip()
-    conclusion_hl = data.get("conclusion_highlights") or ["الوعي", "التغيير"]
-    cta_save = "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد"
-    cta_desc = "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇"
-    return conclusion, conclusion_hl, cta_save, cta_desc
+    """Compatibility entry point: the former conclusion is now a question."""
+    from ..ending import resolve_ending_question
+    question = resolve_ending_question({}, metadata, summary_ar or ' '.join(four_pages), settings)
+    return question, [], "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد", "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇"
 
 
 def build_v2_editorial_package(
@@ -276,7 +241,7 @@ def build_v2_editorial_package(
     """
     Main entry point for V2 editorial production.
     Takes the base 140-160 word summary, splits into 4 complete-sentence pages,
-    creates Option 3 voiceover text (Title + Suffix), and generates the conclusion & CTA.
+    preserves the title + suffix voiceover, and resolves the ending question & CTA.
     """
     orig_title = str(metadata.get("original_title") or "").strip()
     raw_title = str(metadata.get("title") or "").strip()
@@ -327,7 +292,7 @@ def build_v2_editorial_package(
 
         four_pages = [p1, p2, p3, p4]
 
-    # Voiceover: post_title_ar + Option 3 suffix ("... خلاصة الحوار وأبرز أسراره في ثوانٍ.")
+    # Voiceover: translated title + description-directed suffix; visual content is unchanged.
     clean_title_for_tts = re.sub(r"[.!؟?\-_|]+$", "", post_title_ar).strip()
     voiceover_tts = f"{clean_title_for_tts}... {VOICEOVER_SUFFIX}."
 
@@ -336,7 +301,7 @@ def build_v2_editorial_package(
         hook = HookCandidate(
             display_hook=str(hook_dict.get("display") or clean_title_for_tts).strip(),
             highlight_phrase=str(hook_dict.get("highlight") or VOICEOVER_SUFFIX).strip(),
-            tts_text=str(hook_dict.get("tts") or voiceover_tts).strip(),
+            tts_text=voiceover_tts,
             category=str(hook_dict.get("category") or "صوت افتتاحي").strip(),
             scores={"relevance": 10.0},
             total_score=100.0,
@@ -355,27 +320,17 @@ def build_v2_editorial_package(
             explanation="Direct title + Option 3 voiceover hook",
         )
 
-    if base_analysis.get("conclusion"):
-        raw_conclusion = base_analysis["conclusion"]
-        if isinstance(raw_conclusion, dict):
-            conclusion = str(raw_conclusion.get("text", "")).strip().replace("{", "").replace("}", "")
-            conclusion_hl = [str(h).replace("{", "").replace("}", "") for h in (raw_conclusion.get("highlights") or ["الوعي", "التغيير"])]
-            cta_save = str(raw_conclusion.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
-            cta_desc = str(raw_conclusion.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
-        else:
-            conclusion = str(raw_conclusion).strip().replace("{", "").replace("}", "")
-            conclusion_hl = [str(h).replace("{", "").replace("}", "") for h in (base_analysis.get("conclusion_highlights") or ["الوعي", "التغيير"])]
-            cta_save = str(base_analysis.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
-            cta_desc = str(base_analysis.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
-    else:
-        conclusion, conclusion_hl, cta_save, cta_desc = generate_v2_conclusion_and_cta(
-            metadata, summary_ar, four_pages, settings
-        )
-        conclusion = conclusion.replace("{", "").replace("}", "")
-        conclusion_hl = [h.replace("{", "").replace("}", "") for h in conclusion_hl]
+    from ..ending import resolve_ending_question
+    conclusion = resolve_ending_question(base_analysis, metadata, summary_ar or ' '.join(four_pages), settings)
+    conclusion_hl = [conclusion]
+    legacy = base_analysis.get("conclusion")
+    cta_fields = legacy if isinstance(legacy, dict) else base_analysis
+    cta_save = str(cta_fields.get("cta_save") or "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد")
+    cta_desc = str(cta_fields.get("cta_description") or "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇")
 
     creative_plan = {
         "version": "v2",
+        "ending_question_ar": conclusion,
         "voiceover": {
             "tts_text": voiceover_tts,
             "title_ar": clean_title_for_tts,

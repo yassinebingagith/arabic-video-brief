@@ -23,7 +23,8 @@ from .formatter import load_post_data
 from .meta import publish_to_meta
 from .session import persistent_browser_context
 from .tiktok import publish_to_tiktok
-from .tracker import is_already_published, record_publish_result
+from .tracker import get_publish_status, is_already_published, record_publish_result
+from .completion import mark_episode_done
 from .youtube import publish_to_youtube
 
 
@@ -91,6 +92,7 @@ def publish_folder(
         tasks.append({"platform": "meta", "mode": "photo", "target": "facebook"})
 
     results: dict[str, Any] = {}
+    confirmed_publication = False
 
     with sync_playwright() as p:
         with persistent_browser_context(p, headless=headless) as context:
@@ -103,6 +105,8 @@ def publish_folder(
                 if not force and is_already_published(folder, track_key):
                     print(f"[{plat.upper()} ({task_mode})] Already recorded as published. Skipping (use --force to re-post).")
                     results[track_key] = {"status": "skipped", "reason": "already_published"}
+                    prior = get_publish_status(folder).get(track_key, {})
+                    confirmed_publication |= prior.get("publication_state") == "published"
                     continue
 
                 if idx > 0:
@@ -121,14 +125,22 @@ def publish_folder(
                     else:
                         continue
 
+                    if res.get("status") != "success":
+                        raise RuntimeError(f"Publication was not confirmed: {res}")
+                    publication_state = "draft" if draft or res.get("mode") == "draft" else (
+                        "scheduled" if schedule or res.get("mode") == "scheduled" else "published"
+                    )
+                    confirmed_publication |= publication_state == "published"
+
                     record_publish_result(
                         folder=folder,
                         platform=track_key,
                         status="success",
                         details=res.get("mode", "published"),
                         url=res.get("url", ""),
+                        publication_state=publication_state,
                     )
-                    results[track_key] = {"status": "success", **res}
+                    results[track_key] = {"status": "success", **res, "publication_state": publication_state}
                 except Exception as exc:
                     record_publish_result(
                         folder=folder,
@@ -138,6 +150,16 @@ def publish_folder(
                     )
                     results[track_key] = {"status": "failed", "error": str(exc)}
                     print(f"[{plat.upper()}] FAILED: {exc}")
+
+    completion = None
+    if confirmed_publication:
+        # Wait until all uploads and browser handles are closed before renaming.
+        try:
+            completion = mark_episode_done(folder)
+            folder = Path(completion["folder"])
+        except (OSError, ValueError) as error:
+            completion = {"status": "rename_failed", "error": str(error)}
+            print(f"[Folder marker] Publication succeeded, but folder rename failed: {error}")
 
     print("\n=======================================================")
     print("  PUBLISHING RUN COMPLETE")
@@ -149,4 +171,5 @@ def publish_folder(
     return {
         "folder": str(folder),
         "results": results,
+        "completion": completion,
     }

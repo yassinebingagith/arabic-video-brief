@@ -38,7 +38,7 @@ def _print_json(data: object) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="avbrief", description="Create silent Arabic vertical video briefs")
+    parser = argparse.ArgumentParser(prog="avbrief", description="Create Arabic vertical video briefs")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     search = subparsers.add_parser("search", help="Find YouTube candidates")
@@ -56,12 +56,15 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--keep-work", action="store_true")
     run.add_argument("--provider", choices=["vyceai", "seekai", "gemini", "apinex", "brainstorm"], help="LLM provider for analysis")
     run.add_argument("--analysis", type=Path, help="Path to pre-computed analysis JSON file (Antigravity Brainstorm mode)")
-    run.add_argument("--version", choices=["v1", "v2"], help="Pipeline version (v1: 20s legacy two-page, v2: 26s hook + four pages + conclusion)")
+    run.add_argument("--version", choices=["v1", "v2"], help="Video version (v1: 38s two-page, v2: 42.2s title hook + four pages; both end with a question). V3 manual packs are authored through the skill, not this video command.")
     run.add_argument("--model", type=str, help="LLM model name override (e.g. claude-sonnet-4-6, gpt-5.6-new)")
     run.add_argument("--no-tts", action="store_true", help="Render visual-only hook without ElevenLabs narration in V2")
     run.add_argument("--force", action="store_true", help="Force overwrite existing output folder")
-    run.add_argument("--thumbnails", nargs="?", const="manual", default="none", choices=["none", "manual", "kieai"], help="Thumbnail mode: none, manual (prompts only), or kieai (automated image-to-image + sanitization)")
-    run.add_argument("--deepdive", action="store_true", help="Generate exhaustive educational synthesis without character limits (deep_dive_summary.txt)")
+    run.add_argument("--thumbnails", nargs="?", const="manual", default=None, choices=["none", "manual", "kieai"], help="Required choice in non-interactive runs: none, manual prompts, or KIE.ai generation")
+    deepdive_choice = run.add_mutually_exclusive_group()
+    deepdive_choice.add_argument("--deepdive", dest="deepdive", action="store_true", help="Generate deep_dive_summary.txt")
+    deepdive_choice.add_argument("--no-deepdive", dest="deepdive", action="store_false", help="Explicitly decline the deep-dive summary")
+    run.set_defaults(deepdive=None)
 
     subparsers.add_parser("doctor", help="Check local dependencies and configuration")
 
@@ -92,6 +95,9 @@ def _parser() -> argparse.ArgumentParser:
     sanitize = subparsers.add_parser("sanitize", help="Eradicate C2PA provenance and AI metadata from cover images")
     sanitize.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
 
+    prepare_images = subparsers.add_parser("prepare-v3-images", help="Create metadata-free PNG posting copies of V3 images, preserving originals")
+    prepare_images.add_argument("--folder", type=Path, required=True, help="V3 pack or its parent video folder")
+
     deepdive = subparsers.add_parser("deepdive", help="Generate or regenerate exhaustive Deep-Dive Educational Synthesis (deep_dive_summary.txt)")
     deepdive.add_argument("--folder", type=Path, required=True, help="Path to video folder (e.g. outputs/.../<folder>)")
     deepdive.add_argument("--provider", choices=["vyceai", "seekai", "gemini", "apinex", "brainstorm"], help="LLM provider for synthesis")
@@ -112,6 +118,12 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     settings = get_settings()
     try:
+        if args.command == "prepare-v3-images":
+            from .image_export import prepare_v3_images
+            report = prepare_v3_images(args.folder)
+            _print_json(report)
+            return 0 if report["status"] == "success" else 1
+
         if args.command == "doctor":
             checks: dict[str, Any] = {
                 "python": sys.version.split()[0],
@@ -276,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
         output = args.output or settings.output_dir
         keep_work = args.keep_work
         selected_version = getattr(args, "version", None)
+        generate_deepdive = args.deepdive
+        generate_thumbnails = args.thumbnails
 
         if args.job:
             job = _load_job(args.job)
@@ -285,44 +299,69 @@ def main(argv: list[str] | None = None) -> int:
             keep_work = bool(job.get("keep_work", keep_work))
             if not selected_version and job.get("version"):
                 selected_version = str(job["version"]).lower()
+            if generate_deepdive is None and "deepdive" in job:
+                generate_deepdive = job["deepdive"]
+            if generate_thumbnails is None and "thumbnails" in job:
+                generate_thumbnails = job["thumbnails"]
 
         if not sources:
             raise ValueError("Provide at least one --source or a --job file")
 
+        # Missing preferences must not silently become opt-outs in agent runs.
+        if not sys.stdin.isatty():
+            missing = []
+            if selected_version is None:
+                missing.append("V1/V2 (--version v1|v2)")
+            if generate_deepdive is None:
+                missing.append("deep dive (--deepdive or --no-deepdive)")
+            if generate_thumbnails is None:
+                missing.append("thumbnails (--thumbnails none|manual|kieai)")
+            if missing:
+                raise ValueError("SETUP_REQUIRED: Ask the user for the missing choices before processing: " + "; ".join(missing))
+
         if not selected_version:
             if sys.stdin.isatty():
                 sys.stderr.write("\nSelect pipeline version:\n")
-                sys.stderr.write("  1. V1 — Legacy 20-second, two-page format\n")
-                sys.stderr.write("  2. V2 — Arabic hook, four summary pages, conclusion (Recommended)\n")
+                sys.stderr.write("  1. V1 — 38-second, two-page format\n")
+                sys.stderr.write("  2. V2 — 42.2-second, four-page format\n")
                 try:
                     choice = input("Enter choice [1 or 2, default: 2]: ").strip()
+                    if choice not in ("", "1", "2"):
+                        raise ValueError("Choose 1 or 2")
                     selected_version = "v1" if choice == "1" else "v2"
                 except (KeyboardInterrupt, EOFError):
-                    selected_version = "v1"
+                    raise ValueError("SETUP_REQUIRED: Version selection was not completed") from None
             else:
-                selected_version = "v1"
+                raise ValueError("SETUP_REQUIRED: Select V1 or V2")
 
         # Step 2: Deep-Dive Educational Synthesis Decision Gate
-        generate_deepdive = getattr(args, "deepdive", False)
-        if not generate_deepdive and sys.stdin.isatty():
+        if generate_deepdive is None and sys.stdin.isatty():
             try:
                 ans_dd = input("\nGenerate exhaustive Deep-Dive Educational Synthesis (deep_dive_summary.txt for Facebook photo posts)? [y/N]: ").strip().lower()
+                if ans_dd not in ("", "n", "no", "y", "yes"):
+                    raise ValueError("Answer yes or no for deep dive")
                 generate_deepdive = ans_dd in ("y", "yes")
             except (KeyboardInterrupt, EOFError):
-                generate_deepdive = False
+                raise ValueError("SETUP_REQUIRED: Deep-dive selection was not completed") from None
 
         # Step 3 & 4: Thumbnail Decision Gates
-        generate_thumbnails = getattr(args, "thumbnails", "none")
-        if (generate_thumbnails in ("none", None, False)) and sys.stdin.isatty():
+        if generate_thumbnails is None and sys.stdin.isatty():
             try:
                 ans = input("\nGenerate high-CTR thumbnail & photo prompts (4:5 FB & 9:16 vertical)? [y/N]: ").strip().lower()
                 if ans in ("y", "yes"):
-                    method = input("  Choose generation method (1: Manual prompts, 2: Automatic KIE.ai) [default 2]: ").strip()
+                    method = input("  Choose generation method (1: Manual prompts, 2: Automatic KIE.ai): ").strip()
+                    if method not in ("1", "2"):
+                        raise ValueError("SETUP_REQUIRED: Explicitly choose manual or KIE.ai")
                     generate_thumbnails = "manual" if method == "1" else "kieai"
                 else:
+                    if ans not in ("", "n", "no"):
+                        raise ValueError("Answer yes or no for thumbnails")
                     generate_thumbnails = "none"
             except (KeyboardInterrupt, EOFError):
-                generate_thumbnails = "none"
+                raise ValueError("SETUP_REQUIRED: Thumbnail selection was not completed") from None
+
+        if selected_version not in ("v1", "v2") or type(generate_deepdive) is not bool or generate_thumbnails not in ("none", "manual", "kieai"):
+            raise ValueError("Invalid setup choices: version v1/v2, deepdive boolean, thumbnails none/manual/kieai are required")
 
         if selected_version == "v2":
             from .v2.pipeline import run_batch_v2

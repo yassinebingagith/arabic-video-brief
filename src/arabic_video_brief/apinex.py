@@ -22,13 +22,15 @@ CRITICAL WRITING RULES:
 2. SIMPLIFIED MODERN FUSHA (فصحى بيضاء سلسة ومبسطة): Write in 100% correct Modern Standard Arabic using lucid, accessible everyday vocabulary. Avoid archaic classical vocabulary or dense textbook jargon.
 3. CONCRETE REAL-WORLD EXAMPLES: Whenever explaining ideas, anchor them in tangible examples (naming specific professions, daily situations, real numbers, or tangible analogies) so the viewer immediately relates to the content.
 
+Also include `ending_question_ar`: one specific Arabic discussion question tied to the central idea, 4-18 words and at most 140 characters, ending in ؟. Invite a concrete experience, reasoned choice or comparison; never a generic "what do you think", declarative conclusion, or stack of engagement requests. This is on-screen text only, not additional narration.
+
 Return only a valid JSON object with the following fields:
 1. `source_language`: Spoken language of the source video (e.g., "en", "ar").
 2. `transcript`: Meaningful timestamped segments in the spoken source language.
 3. `post_title_ar`: A direct, faithful, and accurate translation of the source video's original title (from VIDEO CONTEXT) into 100% pure Modern Standard Arabic. Faithfully translate the core meaning and accurately transliterate any foreign guest or channel names phonetically into Arabic letters (e.g. "How Emotions Are Made - Lisa Feldman Barrett" -> "كيف تُصنع المشاعر – ليزا فيلدمان باريت"). Strictly no English words, no emojis, and no hashtags.
 4. `summary_ar`: Exactly one self-contained Modern Standard Arabic text of 140 to 160 words total, structured into exactly two balanced paragraphs (70 to 80 words each), separated by a single newline:
-   - Paragraph 1 (Page 1, 0-10s, 70-80 words): Addictive storytelling hook plunging straight into the core reality, shocking facts, or daily struggle revealed in the video. Zero meta-language.
-   - Paragraph 2 (Page 2, 10-20s, 70-80 words): The core value delivery. If the video is practical/self-dev/health/career: deliver concrete pro-tips, golden rules, and actionable solutions the viewer can apply. If the video is informative/news/political/philosophical: deliver the deep takeaway, the hidden game behind the scenes, and the real-world consequence affecting their future. No titles or headers in this field.
+   - Paragraph 1 (Page 1 of V1, 0-15s, 70-80 words): Addictive storytelling hook plunging straight into the core reality, shocking facts, or daily struggle revealed in the video. Zero meta-language.
+   - Paragraph 2 (Page 2 of V1, 15-30s, 70-80 words): The core value delivery. If the video is practical/self-dev/health/career: deliver concrete pro-tips, golden rules, and actionable solutions the viewer can apply. If the video is informative/news/political/philosophical: deliver the deep takeaway, the hidden game behind the scenes, and the real-world consequence affecting their future. No titles or headers in this field.
 5. `post_description`: An in-depth, addictive narrative article in simplified Modern Fusha structured in this exact format:
    - Line 1: Specific Arabic topic title followed by an en-dash and speaker/channel name (e.g. `خمس وظائف فقط ستصمد أمام الذكاء الاصطناعي بحلول 2030 – د. رومان يامبولسكي`). Do NOT output literal placeholder text like "عنوان الموضوع".
    - Opening paragraph: Addictive, relatable hook (around 220-270 characters) drawing the reader into the topic immediately. No meta-talk.

@@ -174,10 +174,10 @@ def process_source_v2(
 
         has_hook_audio = (tts_result.get("status") == "success" and hook_audio_path.exists())
 
-        # Stage 4: Video Render (36.5 seconds)
+        # Stage 4: Video Render (42.2 seconds)
         selected_clip = {
             "start_seconds": 0.0,
-            "end_seconds": min(28.5, float(metadata.get("duration") or 28.5)),
+            "end_seconds": min(settings.v2_page_boundaries[-1] - settings.hook_duration, float(metadata.get("duration") or 31.7)),
             "reason": "Top panel video stream playback",
         }
 
@@ -220,12 +220,9 @@ def process_source_v2(
         summary_path.write_text(editorial.summary_ar, encoding="utf-8")
 
         summary_pages_path = v2_dir / "summary-pages.json"
-        pages_timings = [
-            "0.0s - 9.0s",
-            "9.0s - 15.5s",
-            "15.5s - 22.0s",
-            "22.0s - 28.5s",
-        ]
+        bounds = settings.v2_page_boundaries
+        pages_timings = [f"{bounds[i]:.1f}s - {bounds[i + 1]:.1f}s" for i in range(4)]
+
         pages_payload = [
             {
                 "page": i + 1,
@@ -249,6 +246,7 @@ def process_source_v2(
         hook_tts_path = v2_dir / "hook-tts.txt"
         hook_tts_path.write_text(editorial.hook.tts_text, encoding="utf-8")
 
+        (v2_dir / "ending-question-ar.txt").write_text(editorial.conclusion_ar, encoding="utf-8")
         conclusion_ar_path = v2_dir / "conclusion-ar.txt"
         conclusion_ar_path.write_text(editorial.conclusion_ar, encoding="utf-8")
 
@@ -325,6 +323,7 @@ def process_source_v2(
                 "tts_duration": tts_result.get("duration", 0.0),
             },
             "pages": pages_payload,
+            "ending_question_ar": editorial.conclusion_ar,
             "conclusion": {
                 "text": editorial.conclusion_ar,
                 "highlights": editorial.conclusion_highlights,
@@ -343,6 +342,7 @@ def process_source_v2(
                 "hook_tts": str(hook_tts_path),
                 "hook_voice": str(hook_audio_path) if has_hook_audio else None,
                 "conclusion_ar": str(conclusion_ar_path),
+                "ending_question_ar": str(v2_dir / "ending-question-ar.txt"),
                 "cta_ar": str(cta_ar_path),
                 "creative_plan": str(creative_plan_path),
                 "transcript": str(transcript_path),

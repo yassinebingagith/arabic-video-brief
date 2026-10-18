@@ -40,9 +40,9 @@ class Settings:
     height: int = 1920
     top_height: int = 760
     fps: int = 30
-    duration: float = 28.0
+    duration: float = 38.0
     thumbnail_duration: float = 5.0
-    page_duration: float = 10.0
+    page_duration: float = 15.0
     cta_duration: float = 8.0
     summary_min_words: int = 140
     summary_max_words: int = 160
@@ -56,16 +56,22 @@ class Settings:
     vyceai_model: str = "gpt-5.6-luna"
     apinex_model: str = "free/gemini-3.8-flash"
     music_volume: float = 0.85
+    music_fade_in: float = 1.0
     music_fade_out: float = 2.0
 
-    # V2 Configuration (36.5-second timeline: hook 2.5s + 4 pages [9s + 3*6.5s] + conclusion 8.0s)
-    duration_v2: float = 36.5
+    # V2 reading pages receive 20% more time; the opening card overlaps page 1.
+    duration_v2: float = 42.2
     hook_duration: float = 2.5
-    page_duration_v2: float = 6.5
+    first_page_duration_v2: float = 10.8
+    page_duration_v2: float = 7.8
     conclusion_duration: float = 8.0
     page_v2_min_words: int = 30
     page_v2_max_words: int = 44
     music_duck_volume: float = 0.35  # ~6-8 dB ducking during hook narration
+
+    @property
+    def v2_page_boundaries(self) -> tuple[float, ...]:
+        return (0.0,) + tuple(round(self.first_page_duration_v2 + i * self.page_duration_v2, 1) for i in range(4))
 
     @property
     def gemini_api_key(self) -> str | None:

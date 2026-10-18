@@ -12,8 +12,9 @@ Located in `outputs/<video-slug>/manifest.json`:
 - `post_description`: Narrative description (<2000 chars)
 - `summary_words`: Word count of summary
 - `pages_ar`: Array of 2 strings (Page 1 and Page 2)
-- `render`: Details (width, height, duration=20.0, audio, music_track)
-- `files`: Paths to video, summary, transcript, post_title, post_description, manifest
+- `ending_question_ar`: Main on-screen Arabic question
+- `render`: Details (version=v1, width, height, duration=38.0, audio, music_track, ending_question_ar, timeline: page_1=[0,15], page_2=[15,30], ending=[30,38])
+- `files`: Paths to video, summary, transcript, post_title, post_description, ending_question_ar, manifest
 
 ## V2 Manifest (`manifest.json`)
 Located in `outputs/<video-slug>/v2/manifest.json`:
@@ -33,10 +34,14 @@ Located in `outputs/<video-slug>/v2/manifest.json`:
   - `tts_status`: `"success"` | `"fallback"` | `"skipped"`
   - `tts_duration`: Audio duration in seconds
 - `pages`: Array of 4 page objects with `page`, `counter` (`١/٤`), `timing`, `words`, and `text`
-- `conclusion`:
-  - `text`: Main conclusion
+- `ending_question_ar`: Main on-screen Arabic question
+- `conclusion` (legacy field name retained for compatibility):
+  - `text`: Main ending question
   - `highlights`: Highlighted words
   - `cta_save`: Save CTA
   - `cta_description`: Description CTA
-- `render`: Details (width, height, duration=26.0, audio, music_track, tts_narration, timeline)
-- `files`: Paths to `brief.mp4`, `summary-ar.txt`, `summary-pages.json`, `hook-ar.txt`, `hook-tts.txt`, `hook-voice.mp3`, `conclusion-ar.txt`, `cta-ar.txt`, `creative-plan.json`, `manifest.json`
+- `render`: Details (width, height, duration=42.2, audio, music_track, tts_narration, timeline)
+- `files`: Paths to the staged MP4, `summary-ar.txt`, `summary-pages.json`, `hook-ar.txt`, `hook-tts.txt`, `hook-voice.mp3`, `ending-question-ar.txt`, `conclusion-ar.txt`, `cta-ar.txt`, `creative-plan.json`, `manifest.json`
+
+## V3 Manual Image Pack
+V3 uses `generation-plan.json` rather than a video render manifest. Its ordered references, anchor dependencies, prompts, intended output paths and manual generation states are defined in [v3-carousel-pack.md](v3-carousel-pack.md).

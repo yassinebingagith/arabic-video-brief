@@ -825,12 +825,13 @@ def render_v1_cta_page(
     output_path: Path,
     settings: Settings,
     avatar_path: Path | None = None,
+    ending_question: str = "",
 ) -> None:
     """
-    Renders the dedicated 5-second Call-To-Action ending page (1080x1920) for V1 (20s - 25s):
+    Renders the 8-second question ending page (1080x1920) for V1 (30s - 38s):
     - Top panel (1080x760): Fixed static YouTube source card.
     - Bottom panel (1080x1160):
-      - No conclusion text.
+      - Topic-specific Arabic discussion question above the existing CTA elements.
       - Action Pill Box: "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد" (enlarged, 15% safe margin).
       - Capsule Fikr Logo & Brand label.
       - Primary Description Gold Badge: "السر الأهم والخطوات التطبيقية في الوصف بالأسفل" with downward chevron.
@@ -843,6 +844,23 @@ def render_v1_cta_page(
     panel_top = settings.top_height
     side_safe_margin = int(settings.width * 0.15)  # 162px (15% platform safe margin)
     max_safe_width = settings.width - (2 * side_safe_margin)  # 756px
+
+    question_bottom = panel_top + 68
+    if ending_question:
+        question_size = 46
+        question_font = ImageFont.truetype(str(settings.font_path), question_size)
+        question_lines = _balance_wrap(ending_question, question_font, max_safe_width)
+        while len(question_lines) > 3 and question_size > 32:
+            question_size -= 2
+            question_font = ImageFont.truetype(str(settings.font_path), question_size)
+            question_lines = _balance_wrap(ending_question, question_font, max_safe_width)
+        question_bottom = panel_top + 45
+        for line in question_lines:
+            visible = _display_text(line)
+            box = draw.textbbox((0, 0), visible, font=question_font)
+            draw.text(((settings.width - (box[2] - box[0])) // 2, question_bottom),
+                      visible, font=question_font, fill="#F5C518")
+            question_bottom += int(question_size * 1.45)
 
     # 1. Action Pill Box (Save / Share / Follow): Enlarged, high contrast, clean
     action_text = "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد"
@@ -871,7 +889,7 @@ def render_v1_cta_page(
     save_pill_w = min(sw + 56, max_safe_width)
     save_pill_h = 68
     save_pill_x = (settings.width - save_pill_w) // 2
-    save_pill_y = panel_top + 100
+    save_pill_y = question_bottom + 32
 
     draw.rounded_rectangle(
         (save_pill_x, save_pill_y, save_pill_x + save_pill_w, save_pill_y + save_pill_h),
@@ -943,7 +961,7 @@ def render_v1_cta_page(
     desc_pill_w = min(dw + 64, max_safe_width)
     desc_pill_h = 88
     desc_pill_x = (settings.width - desc_pill_w) // 2
-    desc_pill_y = max(brand_y + 50, 1340)
+    desc_pill_y = max(brand_y + b_box[3] + 20, 1340)
 
     # Subtle outer glow shadow
     draw.rounded_rectangle(
@@ -989,8 +1007,14 @@ def render_video(
     settings: Settings,
     metadata: dict[str, Any] | None = None,
     post_title: str | None = None,
+    ending_question: str = "",
 ) -> dict[str, Any]:
     ffmpeg = find_ffmpeg()
+    page_duration = settings.page_duration
+    reading_end = page_duration * 2
+    total_duration = reading_end + settings.cta_duration
+    fade_start = reading_end - settings.music_fade_out
+    outro_delay = round(reading_end * 1000)
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="avbrief-render-", dir=output.parent, ignore_cleanup_errors=True) as temp_name:
         temp = Path(temp_name)
@@ -1035,17 +1059,18 @@ def render_video(
             cta_page_png,
             settings,
             avatar_path=settings.brand_avatar_path,
+            ending_question=ending_question,
         )
 
-        # 28.0s Timeline setup:
+        # 38.0s Timeline: two 15s reading pages and an 8s ending.
         # Top Panel:
         # 0:00 to 0:02.5 (2.5s): Kinetic Ken Burns zoom on source_card + floating overlay
-        # 0:02.5 to 0:20.0 (17.5s): Video stream with floating overlay & seamless gradient blend
-        # 0:20.0 to 0:28.0 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
+        # 0:02.5 to 0:30.0 (27.5s): Video stream with floating overlay & seamless gradient blend
+        # 0:30.0 to 0:38.0 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
         start = float(selected_clip["start_seconds"])
         top_path = temp / "top.mp4"
         open_dur = 2.5
-        v_stream_dur = 17.5
+        v_stream_dur = reading_end - open_dur
         cta_dur = float(settings.cta_duration)
         fps = settings.fps
         d_open = int(open_dur * fps)
@@ -1055,7 +1080,7 @@ def render_video(
             ffmpeg, "-hide_banner", "-loglevel", "error",
             "-loop", "1", "-t", f"{open_dur:.1f}", "-i", str(source_card),
             "-ss", f"{start:.3f}", "-i", str(source),
-            "-loop", "1", "-t", f"{settings.duration:.1f}", "-i", str(top_overlay),
+            "-loop", "1", "-t", f"{total_duration:.1f}", "-i", str(top_overlay),
             "-loop", "1", "-t", f"{cta_dur:.1f}", "-i", str(source_card),
             "-filter_complex",
             f"[0:v]scale={settings.width}:{settings.top_height}:force_original_aspect_ratio=increase,crop={settings.width}:{settings.top_height},"
@@ -1067,30 +1092,30 @@ def render_video(
             f"zoompan=z='min(zoom+0.00025,1.06)':d={d_cta}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={settings.width}x{settings.top_height}:fps={fps}[c2_zoom];"
             f"[c2_zoom][2:v]overlay=0:0:format=auto,fps={fps},trim=duration={cta_dur:.1f},setpts=PTS-STARTPTS,setsar=1[card2];"
             "[card1][vstream][card2]concat=n=3:v=1:a=0[top]",
-            "-map", "[top]", "-t", f"{settings.duration}", "-an", "-c:v", "libx264", "-preset", "veryfast",
+            "-map", "[top]", "-t", f"{total_duration}", "-an", "-c:v", "libx264", "-preset", "veryfast",
             "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", "-y", str(top_path),
         ]
         _run(command_top, timeout=900)
 
         # Select background music track: V1 strictly uses Vangelis La Petite Fille De La Mer
-        v1_music = settings.music_dir / "vangelis_la_petite_fille_de_la_mer.mp3"
+        v1_music = settings.music_dir / "andrea_vanzo_amelie_0030_0100.mp3"
         if v1_music.exists():
             music_track = v1_music
         else:
             music_track = select_background_music(settings.music_dir)
 
-        # Overlay text pages across the 28s timeline:
-        # Page 1: 0 to 10.0s
-        # Page 2: 10.0s to 20.0s
-        # CTA Page: 20.0s to 28.0s
+        # Overlay text pages across the 38s timeline:
+        # Page 1: 0 to 15.0s
+        # Page 2: 15.0s to 30.0s
+        # CTA Page: 30.0s to 38.0s
         filter_str = (
             f"[1:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page1];"
             f"[2:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page2];"
             f"[3:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page_cta];"
-            f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={settings.duration}[base];"
-            f"[base][page1]overlay=0:0:enable='lt(t,10.0)'[p1];"
-            f"[p1][page2]overlay=0:0:enable='between(t,10.0,20.0)'[p2];"
-            f"[p2][page_cta]overlay=0:0:enable='gte(t,20.0)'[bg];"
+            f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base];"
+            f"[base][page1]overlay=0:0:enable='lt(t,{page_duration:.1f})'[p1];"
+            f"[p1][page2]overlay=0:0:enable='gte(t,{page_duration:.1f})*lt(t,{reading_end:.1f})'[p2];"
+            f"[p2][page_cta]overlay=0:0:enable='gte(t,{reading_end:.1f})'[bg];"
         )
         command_final = [
             ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(top_path),
@@ -1139,19 +1164,20 @@ def render_video(
             outro_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration=20.0,volume={settings.music_volume},"
-                f"afade=t=out:st=18.0:d=2.0,"
-                f"apad=whole_dur={settings.duration}[bg_music];"
-                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration}[outro_voice];"
+                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},volume={settings.music_volume},"
+                f"afade=t=in:st=0:d={settings.music_fade_in:.1f},"
+                f"afade=t=out:st={fade_start:.1f}:d={settings.music_fade_out:.1f},"
+                f"apad=whole_dur={total_duration}[bg_music];"
+                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay={outro_delay}|{outro_delay},apad=whole_dur={total_duration}[outro_voice];"
                 f"[bg_music][outro_voice]amix=inputs=2:duration=first:dropout_transition=0,"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
             )
-            command_final.extend(["-i", str(music_track), "-i", str(outro_voice)])
+            command_final.extend(["-stream_loop", "-1", "-i", str(music_track), "-i", str(outro_voice)])
             command_final.extend([
                 "-filter_complex", filter_str,
                 "-map", "[out]", "-map", "[aout]",
-                "-t", f"{settings.duration}",
-                "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
+                "-t", f"{total_duration}",
+                "-frames:v", str(round(total_duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
                 *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
@@ -1179,17 +1205,18 @@ def render_video(
             music_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration=20.0,volume={settings.music_volume},"
-                f"afade=t=out:st=18.0:d=2.0,"
-                f"apad=whole_dur={settings.duration},"
+                f";[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},volume={settings.music_volume},"
+                f"afade=t=in:st=0:d={settings.music_fade_in:.1f},"
+                f"afade=t=out:st={fade_start:.1f}:d={settings.music_fade_out:.1f},"
+                f"apad=whole_dur={total_duration},"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
             )
-            command_final.extend(["-i", str(music_track)])
+            command_final.extend(["-stream_loop", "-1", "-i", str(music_track)])
             command_final.extend([
                 "-filter_complex", filter_str,
                 "-map", "[out]", "-map", "[aout]",
-                "-t", f"{settings.duration}",
-                "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
+                "-t", f"{total_duration}",
+                "-frames:v", str(round(total_duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
                 *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
@@ -1217,15 +1244,15 @@ def render_video(
             outro_idx = next_input_idx
             next_input_idx += 1
             filter_str += (
-                f";[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay=20000|20000,apad=whole_dur={settings.duration},"
+                f";[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.0,adelay={outro_delay}|{outro_delay},apad=whole_dur={total_duration},"
                 f"aformat=channel_layouts=stereo:sample_rates=44100[aout]"
             )
             command_final.extend(["-i", str(outro_voice)])
             command_final.extend([
                 "-filter_complex", filter_str,
                 "-map", "[out]", "-map", "[aout]",
-                "-t", f"{settings.duration}",
-                "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps),
+                "-t", f"{total_duration}",
+                "-frames:v", str(round(total_duration * settings.fps)), "-r", str(settings.fps),
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
                 *capcut_flags,
                 "-c:a", "aac", "-b:a", "192k",
@@ -1250,8 +1277,8 @@ def render_video(
             command_final.extend([
                 "-filter_complex", filter_str,
                 "-map", "[out]",
-                "-t", f"{settings.duration}",
-                "-frames:v", str(round(settings.duration * settings.fps)), "-r", str(settings.fps), "-an",
+                "-t", f"{total_duration}",
+                "-frames:v", str(round(total_duration * settings.fps)), "-r", str(settings.fps), "-an",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-g", "1", "-pix_fmt", "yuv420p",
                 *capcut_flags,
                 "-movflags", "+faststart", "-y", str(output),
@@ -1261,6 +1288,9 @@ def render_video(
 
     final_info = probe_media(output, ffmpeg)
     return {
+        "version": "v1",
+        "ending_question_ar": ending_question,
+        "timeline": {"page_1": [0, page_duration], "page_2": [page_duration, reading_end], "ending": [reading_end, total_duration]},
         "width": final_info.width,
         "height": final_info.height,
         "duration": final_info.duration,

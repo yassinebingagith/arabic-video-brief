@@ -24,10 +24,10 @@ def generate_post_title(metadata: dict[str, Any], title_hint: str = "") -> str:
         s = re.sub(r"#\b(?:shorts?|يوتيوب_عربي)\b", "", s, flags=re.IGNORECASE).strip()
         return re.sub(r"\s+", " ", s).strip()
 
-    # Rule: If the video was originally titled in Arabic, KEEP IT directly!
+    # Rule: If the video was originally titled in Arabic, KEEP IT directly (unless it contains English words and a pure Arabic hint is supplied)!
     # Strip any trailing/leading #shorts or platform tags, but preserve the exact Arabic title.
     target_orig_ar = orig_title if re.search(r"[\u0600-\u06FF]", orig_title) else (raw_title if re.search(r"[\u0600-\u06FF]", raw_title) else "")
-    if target_orig_ar:
+    if target_orig_ar and not (re.search(r"[a-zA-Z]{2,}", target_orig_ar) and title_hint and re.search(r"[\u0600-\u06FF]", title_hint)):
         clean = _strip_shorts(target_orig_ar)
         return clean
 
@@ -312,8 +312,8 @@ def process_source(
         )
         selected = {
             "start_seconds": 0.0,
-            "end_seconds": min(15.0, float(metadata.get("duration") or 15.0)),
-            "reason": "First fifteen seconds requested by user",
+            "end_seconds": min(27.5, float(metadata.get("duration") or 27.5)),
+            "reason": "Opening source footage for the 30-second reading section",
             "focal_x": 0.5,
             "focal_y": 0.5,
         }
@@ -326,8 +326,11 @@ def process_source(
         write_json(transcript_path, {"source_language": analysis.get("source_language"), "segments": analysis.get("transcript", [])})
         summary_path.write_text(analysis["summary_ar"].strip() + "\n", encoding="utf-8")
         post_title = generate_post_title(metadata, analysis.get("post_title_ar") or analysis.get("summary_ar", ""))
+        from .ending import resolve_ending_question
+        ending_question = resolve_ending_question(analysis, metadata, analysis["summary_ar"], settings)
+        (item_dir / "ending-question-ar.txt").write_text(ending_question + "\n", encoding="utf-8")
         render_details = render_video(
-            local_video, thumbnail, page_one, page_two, selected, temp_render_path, settings, metadata=metadata, post_title=post_title
+            local_video, thumbnail, page_one, page_two, selected, temp_render_path, settings, metadata=metadata, post_title=post_title, ending_question=ending_question
         )
 
         # Anti-Bot Authentic CapCut Filename Staging:
@@ -411,10 +414,12 @@ def process_source(
             "post_description": post_description,
             "summary_words": len(analysis["summary_ar"].split()),
             "pages_ar": [page_one, page_two],
+            "ending_question_ar": ending_question,
             "clip_candidates": [],
             "selected_clip": selected,
             "render": render_details,
             "files": {
+                "ending_question_ar": str(item_dir / "ending-question-ar.txt"),
                 "video": str(final_path),
                 "transcript": str(transcript_path),
                 "summary": str(summary_path),

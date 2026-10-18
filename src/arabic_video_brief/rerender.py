@@ -9,6 +9,7 @@ from typing import Any
 from .config import Settings, get_settings
 from .media import download_youtube, render_video
 from .utils import write_json
+from .ending import resolve_ending_question
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,15 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
         post_title = title_path.read_text(encoding="utf-8").strip()
 
     is_v2 = (folder / "summary-pages.json").exists() or manifest.get("render", {}).get("version") == "v2"
+    question_file = folder / "ending-question-ar.txt"
+    legacy_file = folder / "conclusion-ar.txt"
+    summary_file = folder / "summary-ar.txt"
+    question = resolve_ending_question(
+        {"ending_question_ar": question_file.read_text(encoding="utf-8") if question_file.exists() else "",
+         "conclusion": legacy_file.read_text(encoding="utf-8") if legacy_file.exists() else ""},
+        metadata, summary_file.read_text(encoding="utf-8") if summary_file.exists() else " ".join(manifest.get("pages_ar", [])), settings,
+    )
+    question_file.write_text(question + "\n", encoding="utf-8")
 
     with tempfile.TemporaryDirectory(prefix="avbrief-rerender-") as temp_dir_str:
         temp_dir = Path(temp_dir_str)
@@ -49,16 +59,23 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
         output_video_path = folder / "brief.mp4"
 
         if is_v2:
-            print("[Rerender] Re-rendering V2 format (36.5s with 8s conclusion and outro voiceover)...")
+            print("[Rerender] Re-rendering V2 format (42.2s with 8s question ending and outro voiceover)...")
             from .v2.editorial import V2EditorialPackage, HookCandidate
             from .v2.renderer import render_v2_video
 
             pages_file = folder / "summary-pages.json"
             pages_data = json.loads(pages_file.read_text(encoding="utf-8")) if pages_file.exists() else []
             pages = [p["text"] for p in pages_data] if pages_data else []
+            bounds = settings.v2_page_boundaries
+            for i, page in enumerate(pages_data):
+                page["timing"] = f"{bounds[i]:.1f}s - {bounds[i + 1]:.1f}s"
+            if pages_data:
+                write_json(pages_file, pages_data)
+                manifest["pages"] = pages_data
 
             hook_ar = (folder / "hook-ar.txt").read_text(encoding="utf-8").strip() if (folder / "hook-ar.txt").exists() else post_title
-            conclusion_ar = (folder / "conclusion-ar.txt").read_text(encoding="utf-8").strip() if (folder / "conclusion-ar.txt").exists() else ""
+            conclusion_ar = question
+            legacy_file.write_text(question + "\n", encoding="utf-8")
             cta_ar = (folder / "cta-ar.txt").read_text(encoding="utf-8").strip() if (folder / "cta-ar.txt").exists() else ""
             summary_ar = (folder / "summary-ar.txt").read_text(encoding="utf-8").strip() if (folder / "summary-ar.txt").exists() else ""
 
@@ -84,7 +101,7 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
             )
 
             hook_audio_path = folder / "hook-voice.mp3"
-            selected_clip = manifest.get("selected_clip", {"start_seconds": 0.0, "end_seconds": 28.5})
+            selected_clip = manifest.get("selected_clip", {"start_seconds": 0.0, "end_seconds": settings.v2_page_boundaries[-1] - settings.hook_duration})
 
             render_details = render_v2_video(
                 source=local_video,
@@ -97,7 +114,7 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
                 metadata=metadata,
             )
         else:
-            print("[Rerender] Re-rendering V1 format (28s with 8s CTA and outro voiceover)...")
+            print("[Rerender] Re-rendering V1 format (38s with 8s question ending and outro voiceover)...")
             pages_ar = manifest.get("pages_ar")
             if not pages_ar or len(pages_ar) < 2:
                 summary_path = folder / "summary-ar.txt"
@@ -121,9 +138,14 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
                 settings=settings,
                 metadata=metadata,
                 post_title=post_title,
+                ending_question=question,
             )
 
     manifest["render"] = render_details
+    manifest["ending_question_ar"] = question
+    manifest.setdefault("files", {})["ending_question_ar"] = str(question_file)
+    if is_v2:
+        manifest.setdefault("conclusion", {})["text"] = question
     write_json(manifest_path, manifest)
     try:
         print(f"[Rerender] Successfully updated {output_video_path.name}")

@@ -13,24 +13,27 @@ The engine renders 1080x1920 (9:16 vertical MP4) high-definition video briefs in
     - **Metadata Row:** Channel, view count, and relative upload date clearly rendered in 22px/21px semi-bold with centered bullets.
 
 ## Pipeline Versions
-1. **Version 1 (28.0 Seconds):**
-   - 2.5s source card (kinetic Ken Burns zoom) + 17.5s video stream + 8.0s CTA page.
-   - Background instrumental music (`vangelis_la_petite_fille_de_la_mer.mp3`) at 0.85 volume with 2.0s smooth fade-out (18s-20s).
-   - Dedicated outro voiceover (`last voicever.mp3`) during 20s-28s CTA page.
+1. **Version 1 (38.0 Seconds):**
+   - 2.5s source card (kinetic Ken Burns zoom) + 27.5s video stream + 8.0s CTA page.
+   - Background instrumental music (`andrea_vanzo_amelie_0030_0100.mp3`) at 0.85 volume, with a 1.0s fade-in and 2.0s smooth fade-out (28s-30s).
+   - Dedicated outro voiceover (`last voicever.mp3`) during 30s-38s question and CTA page.
    - See detailed spec: [references/v1-render-spec.md](v1-render-spec.md).
 
-2. **Version 2 Extended Format (36.5 Seconds - Recommended):**
-   - 2.5s source card + 26.0s video stream (across 4 summary pages, 30-44 words each) + 8.0s CTA screen.
+2. **Version 2 Extended Format (42.2 Seconds - Recommended):**
+   - 2.5s source card + 31.7s video stream (across 4 summary pages, 30-44 words each) + 8.0s question and CTA screen.
    - ElevenLabs TTS Arabic voiceover at `t=0s` (`volume=1.3`).
-   - Background music (`naruto_sadness_and_sorrow.mp3`) ducked to `0.12` during speech, swelling to `0.70`, fading at 26.5s-28.5s.
-   - Dedicated outro voiceover (`last voicever.mp3`) at `t=28.5s` (`volume=1.1`).
+   - Background music (randomly choose `naruto_sadness_and_sorrow.mp3` or `godfather_0013.mp3` per render) ducked to `0.12` during speech, swelling to `0.70`, fading at 32.2s-34.2s.
+   - Dedicated outro voiceover (`last voicever.mp3`) at `t=34.2s` (`volume=1.1`).
    - `normalize=0` on FFmpeg `amix` to ensure crystal-clear vocal volume.
    - See detailed spec: [references/v2-render-spec.md](v2-render-spec.md).
 
 ## Post-Description & Publishing Standard
-- In-depth, continuous narrative article style with descriptive thematic section headings (`-عنوان المحور-`) in simplified Modern Fusha.
+- In-depth, continuous narrative article style with descriptive thematic section headings (`◈ عنوان المحور ◈`) in simplified Modern Fusha.
 - Concrete, real-world examples in every section.
 - Universal subscription CTA and platform-agnostic hashtags.
 - Total character count strictly under 2,000 characters (typically 1,600–1,900 chars).
 - No chapters, no timestamps, no bullet points, and no emojis in headings.
 
+
+## V3 Manual Image Packs
+V3 does not render MP4s. See [v3-carousel-pack.md](v3-carousel-pack.md) for the source selection, 4–6-slide Instagram carousel, separate Facebook photo, reference chain, and future generation handoff.

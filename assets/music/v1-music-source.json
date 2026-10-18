@@ -1,0 +1,9 @@
+{
+  "asset": "andrea_vanzo_amelie_0030_0100.mp3",
+  "source": "https://www.youtube.com/watch?v=e6Po2lDHD1I",
+  "start_seconds": 30,
+  "end_seconds": 60,
+  "excerpt_seconds": 30,
+  "render_fade_in_seconds": 1,
+  "render_fade_out_seconds": 2
+}

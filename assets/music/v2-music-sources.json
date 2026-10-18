@@ -1,0 +1,20 @@
+{
+  "selection": "independent uniform random choice per render",
+  "tracks": [
+    {
+      "asset": "naruto_sadness_and_sorrow.mp3",
+      "retained": true
+    },
+    {
+      "asset": "godfather_0013.mp3",
+      "source": "https://www.youtube.com/watch?v=AJgE_dLWsuQ",
+      "source_start_seconds": 13,
+      "source_end_seconds": 53
+    }
+  ],
+  "reading_end_seconds": 34.2,
+  "music_fade_out": [
+    32.2,
+    34.2
+  ]
+}

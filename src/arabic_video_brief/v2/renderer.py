@@ -248,9 +248,9 @@ def render_v2_conclusion_page(
     settings: Settings,
 ) -> None:
     """
-    Renders the dedicated full-page conclusion & CTA (1080x1920) for 0:22.5-0:26.
+    Renders the question & CTA ending (1080x1920) for 0:34.2-0:42.2.
     The top 760px retains the static source card (matching user instruction).
-    The lower panel displays the memorable conclusion (Gold words), contextual save CTA,
+    The lower panel displays the topic-specific question (Gold words), contextual save CTA,
     description CTA, and a larger Capsule Fikr logo at the bottom.
     """
     from PIL import Image, ImageDraw, ImageFont
@@ -270,8 +270,9 @@ def render_v2_conclusion_page(
     side_safe_margin = int(settings.width * 0.15)  # 162px
     max_safe_width = settings.width - (2 * side_safe_margin)  # 756px
 
-    # 1. Main Conclusion (Max 12 words) - Kept prominent and centered
-    conc_font = ImageFont.truetype(str(settings.font_path), 46)
+    # 1. Main ending question (4–18 words, <=140 characters).
+    conc_size = 46
+    conc_font = ImageFont.truetype(str(settings.font_path), conc_size)
     try:
         conc_font.set_variation_by_name("Bold")
     except (AttributeError, OSError, ValueError):
@@ -279,7 +280,15 @@ def render_v2_conclusion_page(
 
     clean_conc = conclusion_text.replace("{", "").replace("}", "")
     conc_lines = _balance_wrap(clean_conc, conc_font, max_safe_width)
-    conc_line_h = math.ceil(46 * 1.45)
+    while len(conc_lines) > 3 and conc_size > 32:
+        conc_size -= 2
+        conc_font = ImageFont.truetype(str(settings.font_path), conc_size)
+        try:
+            conc_font.set_variation_by_name("Bold")
+        except (AttributeError, OSError, ValueError):
+            pass
+        conc_lines = _balance_wrap(clean_conc, conc_font, max_safe_width)
+    conc_line_h = math.ceil(conc_size * 1.45)
     conc_y = panel_top + 45
 
     clean_highlights = [h.replace("{", "").replace("}", "").strip() for h in conclusion_highlights]
@@ -289,7 +298,7 @@ def render_v2_conclusion_page(
         tw = box[2] - box[0]
         tx = (settings.width - tw) // 2
 
-        is_hl = any(h in line for h in clean_highlights if h)
+        is_hl = clean_conc.strip().endswith("؟") or any(h in line for h in clean_highlights if h)
         col = "#F5C518" if is_hl else "#FFFFFF"
 
         draw.text((tx + 2, conc_y + 2), vis, font=conc_font, fill="#000000")
@@ -446,6 +455,13 @@ def render_v2_conclusion_page(
 
 
 
+def select_v2_music(music_dir: Path) -> Path | None:
+    import random
+    names = ("naruto_sadness_and_sorrow.mp3", "godfather_0013.mp3")
+    available = [music_dir / name for name in names if (music_dir / name).is_file()]
+    return random.choice(available) if available else None
+
+
 def render_v2_video(
     source: Path,
     thumbnail: Path | None,
@@ -456,21 +472,13 @@ def render_v2_video(
     hook_audio_path: Path | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """
-    Renders the complete 26-second V2 vertical MP4:
-    - 0:00-0:02.5: Hook (top source card + bottom hook with Gold highlight & badge + ElevenLabs narration)
-    - 0:02.5-0:05.0: Page 1 with static source card
-    - 0:05.0-0:07.5: Page 1 with muted source video playback
-    - 0:07.5-0:12.5: Page 2 with muted video playback
-    - 0:12.5-0:17.5: Page 3 with muted video playback
-    - 0:17.5-0:22.5: Page 4 with muted video playback
-    - 0:22.5-0:26.0: Conclusion & CTA with top source card and larger Capsule Fikr logo
-    - Background Music: Naruto Sadness and Sorrow (or configured music)
-    """
+    """Render V2 with 10.8/7.8/7.8/7.8-second reading pages and an 8s ending."""
     ffmpeg = find_ffmpeg()
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    total_duration = settings.duration_v2  # 26.0s
+    bounds = settings.v2_page_boundaries
+    reading_end = bounds[-1]
+    total_duration = round(reading_end + settings.conclusion_duration, 1)
     start_time = float(selected_clip.get("start_seconds", 0.0))
 
     with tempfile.TemporaryDirectory(prefix="avbrief-v2-render-", dir=output.parent, ignore_cleanup_errors=True) as temp_dir_str:
@@ -489,13 +497,13 @@ def render_v2_video(
         top_overlay = temp / "top-overlay.png"
         render_top_overlay(metadata or {}, top_overlay, settings)
 
-        # 3. Render Top Panel MP4 (Exact 36.5s duration)
+        # 3. Render Top Panel MP4 (Exact 42.2s duration)
         # 0:00 to 0:02.5 (2.5s): Kinetic Ken Burns zoom on source_card + floating overlay
-        # 0:02.5 to 0:28.5 (26.0s): Full 1080x760 video stream with floating overlay & seamless gradient blend
-        # 0:28.5 to 0:36.5 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
+        # 0:02.5 to 0:34.2 (31.7s): Full 1080x760 video stream with floating overlay & seamless gradient blend
+        # 0:34.2 to 0:42.2 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
         top_path = temp / "top_v2.mp4"
-        open_dur = 2.5
-        v_stream_dur = 26.0
+        open_dur = settings.hook_duration
+        v_stream_dur = reading_end - open_dur
         cta_dur = float(settings.conclusion_duration)
         fps = settings.fps
         d_open = int(open_dur * fps)
@@ -554,21 +562,8 @@ def render_v2_video(
             settings,
         )
 
-        # 5. Background music selection: Naruto Sadness and Sorrow as default V2 music
-        v2_music_file = settings.music_dir / "naruto_sadness_and_sorrow.mp3"
-        if v2_music_file.exists():
-            music_track = v2_music_file
-        else:
-            music_track = select_background_music(settings.music_dir)
-
-        # 6. Compose Video Filtergraph across the timeline
-        # Top panel is at (0, 0) continuously across all total_duration
-        # Bottom panel transitions:
-        # page_1.png: 0 to 9.0s (9.0s total - ample reading time + voiceover)
-        # page_2.png: 9.0 to 15.5s (6.5s)
-        # page_3.png: 15.5 to 22.0s (6.5s)
-        # page_4.png: 22.0 to 28.5s (6.5s)
-        # conclusion.png: 28.5 to total_duration (8.0s)
+        # Select independently for each render; keep the pool specific to V2.
+        music_track = select_v2_music(settings.music_dir)
 
         filter_parts: list[str] = [
             f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base]",
@@ -577,11 +572,11 @@ def render_v2_video(
             f"[3:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p3]",
             f"[4:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p4]",
             f"[5:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[conc]",
-            "[base][p1]overlay=0:0:enable='lt(t,9.0)'[c1]",
-            "[c1][p2]overlay=0:0:enable='between(t,9.0,15.5)'[c2]",
-            "[c2][p3]overlay=0:0:enable='between(t,15.5,22.0)'[c3]",
-            "[c3][p4]overlay=0:0:enable='between(t,22.0,28.5)'[c4]",
-            "[c4][conc]overlay=0:0:enable='gte(t,28.5)'[c5]",
+            f"[base][p1]overlay=0:0:enable='lt(t,{bounds[1]:.1f})'[c1]",
+            f"[c1][p2]overlay=0:0:enable='gte(t,{bounds[1]:.1f})*lt(t,{bounds[2]:.1f})'[c2]",
+            f"[c2][p3]overlay=0:0:enable='gte(t,{bounds[2]:.1f})*lt(t,{bounds[3]:.1f})'[c3]",
+            f"[c3][p4]overlay=0:0:enable='gte(t,{bounds[3]:.1f})*lt(t,{reading_end:.1f})'[c4]",
+            f"[c4][conc]overlay=0:0:enable='gte(t,{reading_end:.1f})'[c5]",
         ]
 
         final_cmd = [
@@ -615,19 +610,19 @@ def render_v2_video(
 
         # Audio configuration:
         # Hook voiceover starts at t=0.
-        # Music track plays with ducking during hook narration, then fades out before 28.5s.
-        # Outro voiceover starts at t=28.5s during the 8.0s conclusion/CTA page.
+        # Music track plays with ducking during hook narration, then fades out before 34.2s.
+        # Outro voiceover starts at t=34.2s during the 8.0s conclusion/CTA page.
         has_hook_audio = bool(hook_audio_path and hook_audio_path.exists())
         outro_voice = settings.outro_voiceover_path
         has_outro = bool(outro_voice and outro_voice.exists())
 
         fade_dur = 2.0
-        fade_st = 26.5
+        fade_st = reading_end - fade_dur
 
         mix_inputs: list[str] = []
 
         if music_track:
-            final_cmd.extend(["-i", str(music_track)])
+            final_cmd.extend(["-stream_loop", "-1", "-i", str(music_track)])
             music_idx = next_input_idx
             next_input_idx += 1
             if has_hook_audio:
@@ -643,7 +638,7 @@ def render_v2_video(
                 tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
 
                 filter_parts.append(
-                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},"
                     f"volume='if(lt(t,{voice_dur:.2f}), 0.12, min(0.70, 0.12 + (0.70-0.12)*(t-{voice_dur:.2f})/0.6))':eval=frame,"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[ducked_music]"
                 )
@@ -652,7 +647,7 @@ def render_v2_video(
                 seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "v2"))
                 tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
                 filter_parts.append(
-                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},volume={settings.music_volume},"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},volume={settings.music_volume},"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[bg_music]"
                 )
                 mix_inputs.append("[bg_music]")
@@ -673,7 +668,7 @@ def render_v2_video(
             seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "outro"))
             outro_jitter = 1.084 * (1.002 - ((seed_val % 5) * 0.001))
             filter_parts.append(
-                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.1,adelay=28500|28500,apad=whole_dur={total_duration}[outro_audio]"
+                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.1,adelay={round(reading_end * 1000)}|{round(reading_end * 1000)},apad=whole_dur={total_duration}[outro_audio]"
             )
             mix_inputs.append("[outro_audio]")
 
@@ -743,10 +738,7 @@ def render_v2_video(
             "tts_narration": has_hook_audio,
             "outro_voiceover": has_outro,
             "timeline": {
-                "page_1": "0:00-0:09.0",
-                "page_2": "0:09.0-0:15.5",
-                "page_3": "0:15.5-0:22.0",
-                "page_4": "0:22.0-0:28.5",
-                "conclusion": f"0:28.5-0:{total_duration:.1f}",
+                **{f"page_{i + 1}": f"0:{bounds[i]:04.1f}-0:{bounds[i + 1]:04.1f}" for i in range(4)},
+                "conclusion": f"0:{reading_end:04.1f}-0:{total_duration:04.1f}",
             },
         }

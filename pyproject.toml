@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "arabic-video-brief"
 version = "0.1.0"
-description = "Create silent 15-second Arabic vertical video briefs"
+description = "Create Arabic vertical video briefs with V1 and V2 rendering pipelines"
 requires-python = ">=3.11"
 dependencies = [
   "arabic-reshaper>=3.0.0",

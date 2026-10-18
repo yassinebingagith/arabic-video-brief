@@ -35,7 +35,7 @@ def sanitize_image(image_path: Path, force: bool = False) -> bool:
     """
     Strips all C2PA manifest boxes (caBX), IPTC digitalSourceType tags, EXIF, and AI generator signatures
     by rebuilding the image strictly from its raw decoded pixel buffer.
-    Ensures Meta (Facebook/Instagram), TikTok, and YouTube cannot auto-tag the post with 'AI info' / 'Made with AI'.
+    This removes embedded metadata only; it does not guarantee platform labels or remove pixel watermarks.
     """
     if not image_path.is_file():
         return False

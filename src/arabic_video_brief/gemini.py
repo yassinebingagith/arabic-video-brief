@@ -29,8 +29,9 @@ ANALYSIS_SCHEMA: dict[str, Any] = {
         "post_title_ar": {"type": "string"},
         "summary_ar": {"type": "string"},
         "post_description": {"type": "string"},
+        "ending_question_ar": {"type": "string"},
     },
-    "required": ["source_language", "transcript", "post_title_ar", "summary_ar", "post_description"],
+    "required": ["source_language", "transcript", "post_title_ar", "summary_ar", "post_description", "ending_question_ar"],
 }
 
 
@@ -45,12 +46,13 @@ CRITICAL WRITING RULES:
 3. CONCRETE REAL-WORLD EXAMPLES: Whenever explaining ideas, anchor them in tangible examples (naming specific professions, daily situations, real numbers, or tangible analogies) so the viewer immediately relates to the content.
 
 Return only the requested structured JSON object with the following fields:
+Include `ending_question_ar`: one source-specific Arabic discussion question, 4–18 words and at most 140 characters, ending in ؟. Invite an experience, reasoned choice or comparison; avoid a generic question, declarative conclusion, or stacked engagement requests. This is on-screen text only, not additional narration.
 1. `source_language`: Spoken language of the source video (e.g., "en", "ar").
 2. `transcript`: Compact meaningful timestamped segments in the spoken source language.
 3. `post_title_ar`: A direct, faithful, and accurate translation of the source video's original title (from VIDEO CONTEXT) into 100% pure Modern Standard Arabic. Faithfully translate the core meaning and accurately transliterate any foreign guest or channel names phonetically into Arabic letters (e.g. "Female Psychopath Explains How She Manipulates Men - Kanika Batra" -> "سيكوباتية توضح كيف تتلاعب بالرجال – كانيكا باترا"). Do NOT invent a new topic hook or arbitrary question; translate the original title directly. Strictly no English words, no emojis, and no hashtags.
 4. `summary_ar`: Exactly one self-contained Modern Standard Arabic text of 140 to 160 words total, structured into exactly two balanced paragraphs (70 to 80 words each), separated by a single newline:
-   - Paragraph 1 (Page 1, 0-10s, 70-80 words): Addictive storytelling hook plunging straight into the core reality, shocking facts, or daily struggle revealed in the video. Zero meta-language.
-   - Paragraph 2 (Page 2, 10-20s, 70-80 words): The core value delivery. If the video is practical/self-dev/health/career: deliver concrete pro-tips, golden rules, and actionable solutions the viewer can apply. If the video is informative/news/political/philosophical: deliver the deep takeaway, the hidden game behind the scenes, and the real-world consequence affecting their future. No titles or headers in this field.
+   - Paragraph 1 (Page 1 of V1, 0-15s, 70-80 words): Addictive storytelling hook plunging straight into the core reality, shocking facts, or daily struggle revealed in the video. Zero meta-language.
+   - Paragraph 2 (Page 2 of V1, 15-30s, 70-80 words): The core value delivery. If the video is practical/self-dev/health/career: deliver concrete pro-tips, golden rules, and actionable solutions the viewer can apply. If the video is informative/news/political/philosophical: deliver the deep takeaway, the hidden game behind the scenes, and the real-world consequence affecting their future. No titles or headers in this field.
 5. `post_description`: An in-depth, addictive narrative article in simplified Modern Fusha structured in this exact format:
    - Line 1: Specific Arabic topic title followed by an en-dash and speaker/channel name (e.g. `خمس وظائف فقط ستصمد أمام الذكاء الاصطناعي بحلول 2030 – د. رومان يامبولسكي`). Do NOT output literal placeholder text like "عنوان الموضوع".
    - Opening paragraph: Addictive, relatable hook (around 220-270 characters) drawing the reader into the topic immediately. No meta-talk.

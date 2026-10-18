@@ -21,7 +21,7 @@ def get_publish_status(folder: Path) -> dict[str, Any]:
 def is_already_published(folder: Path, platform: str) -> bool:
     data = get_publish_status(folder)
     plat_data = data.get(platform, {})
-    return plat_data.get("status") == "success"
+    return plat_data.get("status") == "success" and plat_data.get("publication_state") != "draft" and plat_data.get("details") != "draft"
 
 
 def record_publish_result(
@@ -30,6 +30,7 @@ def record_publish_result(
     status: str,
     details: str = "",
     url: str = "",
+    publication_state: str | None = None,
 ) -> None:
     file_path = folder / STATUS_FILE
     data = get_publish_status(folder)
@@ -38,5 +39,6 @@ def record_publish_result(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "details": details,
         "url": url,
+        "publication_state": publication_state,
     }
     file_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

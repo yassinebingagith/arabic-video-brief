@@ -1,0 +1,6 @@
+interface:
+  display_name: "Arabic Video Brief"
+  short_description: "Arabic video briefs and carousel/photo packs"
+  default_prompt: "Use $arabic-video-brief with my YouTube links or existing transcripts. Offer V1 (38s video), V2 (42.2s video), or V3 (Instagram carousel plus Facebook photo pack) when my preferred mode is unclear. For any video request, including V1/V2 plus V3, ask unanswered engine, deep-dive, and thumbnail choices before processing; never infer an opt-out. After finishing a V3 pack, ask whether to generate with an image API, one persistent ChatGPT/MCP generation session, or stop for manual generation. Use Western 0–9 numerals in Arabic visuals."
+policy:
+  allow_implicit_invocation: true

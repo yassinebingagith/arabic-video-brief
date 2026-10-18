@@ -1,0 +1,29 @@
+# V3 sequential browser/MCP execution and resume
+
+This is the agent's execution procedure for a user-selected ChatGPT/browser/MCP route. It is not a background daemon or an installed image API client. Follow the connected tool's actual documentation and access limits; do not invent MCP calls, DOM selectors, attachment IDs, download URLs, or local file paths. Workflow-only requests do not authorize a live test.
+
+## Before the first submission
+
+- Complete the pack and the applicable V1/V2 setup questions first. Preserve the selected image method for this episode. With no selection, ask the end-of-pack question; with explicit manual mode, stop at the pack.
+- Discover the available browser/MCP tools and read their skill/documentation. Verify they support the entire route: opening/reusing a generation chat, attaching local images, observing completion, and retrieving original generated image bytes to this machine. A tool that only sends text to another agent is insufficient.
+- Use one persistent generation chat/tab for this episode. Reuse its known locator on resume. Record the observed browser/tab ID or chat URL in `generation-plan.json` as `generation_session`, plus the selected method. A newly created generation chat is a browser conversation, not authorization to create or message a separate Codex task.
+- Check a reference can actually be uploaded and a generated image can actually be downloaded using documented capabilities. Do not start submitting an entire carousel when the download step is unavailable. If login, a usage limit, missing attachment support or a missing download capability prevents execution, save the precise blocker and explain the needed user action. Never switch to a paid API as a fallback.
+- Make sure only one worker controls this generation session and plan. No parallel image requests.
+
+## One image at a time
+
+Use `python tools/v3_save_image.py next --folder "outputs/<source>/v3"` for read-only resume guidance. It reports `review`, `generate`, `resume_job`, `reconcile`, `repair_pack`, `revise`, `await_manual`, `select_method`, or `export`. It does not call a browser or generate an image.
+
+1. **Resolve the next unfinished item.** Review a saved `generated` image before any new submission. Skip an `accepted` image only after verifying its local file. Reconcile an unexpected existing file instead of overwriting it. If an active request or download is recorded, inspect that request first.
+2. **Attach references.** Slide 1 receives the original thumbnail. Every subsequent slide and the Facebook image receives that identical thumbnail first and the same accepted slide 1 second. Explicitly verify both attachment previews before submitting. Reusing a conversation alone does not guarantee the correct references are attached. Never use slide 2 as slide 3's anchor.
+3. **Submit one complete prompt.** Record the image ID, prompt path, reference paths/hashes, observed session locator and attempt start in the plan. Submit once, then store any observed message/job locator. Use `generation_job.state` values `submitted`, `generating`, `download_pending`, `downloaded`, `saved`, or `failed`, with an error/reason when applicable. These are observed checkpoints, not invented success signals.
+4. **Wait for actual completion.** Observe the existing request using supported UI or job-status tools. Poll at sensible intervals (for example 15–30 seconds) and keep the user informed about meaningful progress. A placeholder, elapsed time, preview, or a returned task ID does not prove the image is finished. After a tool timeout, inspect the original request before considering any retry; do not submit a duplicate merely because a wait call ended. Persistent errors or a confirmed usage limit should leave a resumable blocked item, not an endless retry loop.
+5. **Download the original image.** Use the output's actual download control or documented attachment transfer. Track the new download associated with this request. Wait for completion and verify the local file decodes as an image; HTML pages, thumbnails, screenshots of the chat and `.crdownload`/partial files are not final assets. Preserve the original downloaded file; record its actual path before registration.
+6. **Register, inspect, accept.** Run `tools/v3_save_image.py save` with the actual local file and image ID. Inspect the saved canonical image for correct Arabic, Western 0–9 digits, complete text, intended content, legibility, composition, and continuity with slide 1. Only then run `accept --reviewed`. This is the agent's QA step, not a compulsory user approval for every slide.
+7. **Continue autonomously within the chosen episode.** Update the checkpoint before moving to the next image. Generate all carousel images in order, then the standalone Facebook photo. Do not ask “continue?” after every successful image. On a QA failure, preserve the failed attempt, record the specific repair, and create a versioned revision; do not clobber accepted work or regenerate the entire carousel. If the anchor changes, inspect every dependent image against the new anchor before keeping it accepted.
+
+After every planned image is saved and accepted, run `prepare-v3-images`, inspect its report, and deliver the verified posting paths plus captions. Publishing is a separate action. If work stops early, state the exact accepted/generated/missing items, the active session/request, and the next action. Do not call an episode complete because all prompts exist.
+
+## API route
+
+Treat image API execution as a future integration unless the chosen provider has a verified working image adapter, reference-upload support, local saving and explicit user authorization for its cost. A configured reasoning-model key does not satisfy this requirement. The browser route must never silently turn into API usage. The same sequential reference, download, inspection, checkpoint and resume rules apply when an image adapter is implemented.
