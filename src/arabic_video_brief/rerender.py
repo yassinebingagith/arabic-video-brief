@@ -9,7 +9,7 @@ from typing import Any
 from .config import Settings, get_settings
 from .media import download_youtube, render_video
 from .utils import write_json
-from .ending import resolve_ending_question
+from .ending import resolve_ending_question, resolve_v2_footer
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +39,13 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
 
     is_v2 = (folder / "summary-pages.json").exists() or manifest.get("render", {}).get("version") == "v2"
     question_file = folder / "ending-question-ar.txt"
+    footer_file = folder / "ending-text-ar.txt"
     legacy_file = folder / "conclusion-ar.txt"
     summary_file = folder / "summary-ar.txt"
-    question = resolve_ending_question(
-        {"ending_question_ar": question_file.read_text(encoding="utf-8") if question_file.exists() else "",
+    resolver = resolve_v2_footer if is_v2 else resolve_ending_question
+    question = resolver(
+        {"ending_text_ar": footer_file.read_text(encoding="utf-8") if footer_file.exists() else "",
+         "ending_question_ar": question_file.read_text(encoding="utf-8") if question_file.exists() else "",
          "conclusion": legacy_file.read_text(encoding="utf-8") if legacy_file.exists() else ""},
         metadata, summary_file.read_text(encoding="utf-8") if summary_file.exists() else " ".join(manifest.get("pages_ar", [])), settings,
     )
@@ -145,6 +148,9 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
     manifest["ending_question_ar"] = question
     manifest.setdefault("files", {})["ending_question_ar"] = str(question_file)
     if is_v2:
+        footer_file.write_text(question + "\n", encoding="utf-8")
+        manifest["ending_text_ar"] = question
+        manifest.setdefault("files", {})["ending_text_ar"] = str(footer_file)
         manifest.setdefault("conclusion", {})["text"] = question
     write_json(manifest_path, manifest)
     try:

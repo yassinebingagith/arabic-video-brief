@@ -7,7 +7,9 @@ description: Process or discover YouTube sources for Arabic content. V1 creates 
 
 Create reviewable 9:16 Arabic video briefs through the local engine, or V3 image prompt packs through the workflow in [references/v3-carousel-pack.md](references/v3-carousel-pack.md). Always process sources **sequentially one-by-one** with immediate per-item feedback.
 
-Preserve the user's current video design: title-only opening narration (with the V2 suffix `ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف`), existing outro recording, V1/V2 music choices, thumbnail pipeline, blue blurred frame, and export settings. Do not introduce full-summary narration, require a paid voice plan, or narrow the topic range. V3 has independent, source-led art direction without a compulsory palette, logo, or mascot.
+Preserve the user's current video design: title-only opening narration (with the V2 suffix `ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف`), existing outro recording, V1/V2 music choices, blue blurred frame, and export settings. Do not introduce full-summary narration, require a paid voice plan, or narrow the topic range. V3 has independent, source-led art direction without a compulsory palette, logo, or mascot.
+
+For V1/V2 writing and video thumbnails, read [references/v1-v2-editorial-style.md](references/v1-v2-editorial-style.md). Use concrete explanatory copy and source-led hybrid covers. Keep V3 unchanged.
 
 ## User Interaction & Entry Protocol
 
@@ -75,7 +77,7 @@ Before processing videos, prompt the user with `ask_question` to select how tran
 4. **SeekAI API (`deepseek-v4-flash`):** Uses SeekAI endpoint from `.env`.
 
 > [!IMPORTANT]
-> **Suggested engine:** Antigravity Brainstorm LLM. Use it when the user chooses it or explicitly asks you to choose the engine; do not treat an unanswered setup question as consent. In Brainstorm mode, author the complete analysis JSON (including `ending_question_ar`) and pass `--provider brainstorm --analysis <file>`; do not silently make paid analysis calls.
+> **Suggested engine:** Antigravity Brainstorm LLM. Use it when the user chooses it or explicitly asks you to choose the engine; do not treat an unanswered setup question as consent. In Brainstorm mode, author the complete analysis JSON (including `ending_question_ar`, V2 `pages` and `ending_text_ar`, and `thumbnail_hook_ar` when covers are requested) and pass `--provider brainstorm --analysis <file>`; do not silently make paid analysis calls.
 
 ### Step 3.2: Deep-Dive Educational Synthesis Decision Gate (ملخص معرفي مطوّل وشامل)
 
@@ -84,7 +86,7 @@ Prompt the user with `ask_question`:
 - **Option 1: No (Default/Normal):** Process video without deep-dive synthesis. No extra file is created.
 - **Option 2: Yes:** A dedicated synthesis call executes the Senior Knowledge Architect & Content Strategist prompt on the full transcript, creating `deep_dive_summary.txt` in the folder without character limits. This text serves as the rich educational caption when posting Facebook Photo Posts (`--mode photo`).
 
-### Step 3.5: Thumbnail Generation Protocol (Thumbnail Master 4.0 Engine)
+### Step 3.5: Thumbnail Generation Protocol (Source-led Hybrid Engine)
 
 Before processing or rendering assets, ask the user whether thumbnails are desired using a 2-tier question sequence:
 
@@ -100,11 +102,10 @@ Before processing or rendering assets, ask the user whether thumbnails are desir
     - `thumbnail_prompt_facebook_4x5.txt` (1080×1350 for Facebook photo posts)
     - `thumbnail_prompt_vertical_9x16.txt` (1080×1920 with 3:4/4:5 crop-proof safe margins)
     - `THUMBNAIL_GUIDE.md`
-  - **4.0 Engine Capabilities**:
-    - **Focal Archetypes**: Automatically routes between *Emotive Portrait*, *Split-Screen Comparison*, *Symbolic Artifact*, *Dramatic Scene*, or *Conceptual Metaphor* based on topic.
-    - **Single Dominant Title**: Uses `post-title.txt` as the sole headline with dual-tone calligraphy (power-word highlighted in gold/crimson). No secondary conclusion text to clutter the image.
-    - **Feed Crop Proofing**: Title placed in upper safe zone (Y: 320–560) and bottom 25% kept strictly text-free to clear platform UI overlays (`▷ 515`, duration, usernames).
-    - **10 Visual Styles**: Full style menu with strict Anti-AI-Slop tactile texture enforcement.
+  - **Source-led hybrid direction**: Inspect the original thumbnail. Preserve its actual medium and style (including surrealism), adapted to this episode's topic. Consider face-led, scene/object-led and hybrid compositions; choose the clearest curiosity gap. No automatic dark/gold palette, portrait, desk, manuscript or cinematic treatment.
+  - **Short thumbnail hook**: Prefer 3–8 Arabic words, maximum 10 words / 70 characters. Save as `thumbnail-hook-ar.txt` when authored; keep the full translated post title and narration unchanged. Older folders may delegate hook authoring to the image generator, explicitly marked pending in the guide.
+  - **Quality invariants**: Dimensional faces when present, source identity, purposeful lighting and natural or intentionally artistic textures; no waxy skin, generic CGI gloss or distorted Arabic.
+  - **Feed framing**: Retain vertical title Y 320–560, central subject Y 580–1420 and text-free bottom Y 1450–1920. Verify the actual preview; square crops can trim the headline.
   - In chat, the agent **must remind the user** to generate their images externally and save them in the video folder under the required names:
     - `cover_facebook_4x5.png` (or `.jpg`)
     - `cover_vertical_9x16.png` (or `.jpg`)
@@ -158,8 +159,8 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
 - **Background Music:** Contemplative instrumental track (`assets/music/andrea_vanzo_amelie_0030_0100.mp3`). The requested YouTube excerpt from 0:30–1:00, a 1-second fade-in at t=0s, steady volume, and a smooth 2.0-second fade-out between 28.0s and 30.0s.
 - **Outro Voiceover (The Conversion Bridge):** Dedicated outro audio narration (`assets/music/last voicever.mp3`) plays during the final 8 seconds (30.0s - 38.0s) across the CTA page.
 - **Left-Shift Safe Zone:** All Arabic text blocks on Page 1 & Page 2 are shifted 6% to the left (~65px) so that right-side platform action buttons never overlap with the Arabic text.
-- **Page 1 (0–15s):** Direct translation of source YouTube title, center headline, dynamic category, and 70–80 word storytelling hook.
-- **Page 2 (15–30s):** 70–80 word core value delivery, pro-tips or hidden game takeaway. Footer prompt: `اقرأ الوصف لمزيد من التفاصيل`. Total words 140–160.
+- **Page 1 (0–15s):** Direct translation of source YouTube title, center headline, dynamic category, and 70–80 words opening with a source-specific example, event or puzzle and beginning its explanation.
+- **Page 2 (15–30s):** 70–80 words developing the explanation through a distinct example, consequence, comparison or nuance; no repeated hook or compulsory tips. Footer prompt: `اقرأ الوصف لمزيد من التفاصيل`. Total words 140–160.
 - **Question & CTA Page (30–38s):** Dedicated 8.0-second ending page:
   - Top panel: Dynamic thumbnail card with subtle Ken Burns push-in zoom and floating metadata badge.
   - Bottom panel:
@@ -180,12 +181,12 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
     - **Multi-line Title:** Full video title wraps cleanly without truncation.
     - **Seamless Alpha Gradient:** Feathers from `y=490` to `y=760` into pure black `#000000`.
 - **Bottom Panel (1080×1160) - 4 Text Pages + 1 Conclusion Screen:**
-  - **Page 1 (0:00 - 0:10.8, 10.8s):** Main video title in Modern Standard Arabic + Category tag + Hook/Setup (30–44 words, ~20–25% gold-highlighted punch words).
-  - **Page 2 (0:10.8 - 0:18.6, 7.8s):** Key insight 1 (30–44 words).
-  - **Page 3 (0:18.6 - 0:26.4, 7.8s):** Key insight 2 (30–44 words).
-  - **Page 4 (0:26.4 - 0:34.2, 7.8s):** Key insight 3 / practical advice (30–44 words).
+  - **Page 1 (0:00 - 0:10.8, 10.8s):** Main video title in Modern Standard Arabic + Category tag + first explanatory beat with a concrete entry point and useful reveal (30–44 words, existing gold highlighting).
+  - **Page 2 (0:10.8 - 0:18.6, 7.8s):** next explanatory beat adding mechanism, evidence or context (30–44 words).
+  - **Page 3 (0:18.6 - 0:26.4, 7.8s):** a distinct example, comparison, development or consequence (30–44 words).
+  - **Page 4 (0:26.4 - 0:34.2, 7.8s):** the source-appropriate payoff or nuance (30–44 words), without a generic conclusion or forced advice.
   - **Conclusion & CTA Screen (0:34.2 - 0:42.2, 8.0s):**
-    - **Main Ending Text:** Gold-highlighted topic-specific Arabic question (4–18 words, maximum 140 characters), replacing the declarative punchline.
+    - **Main Ending Text:** Gold-highlighted V3-style Footer Action / Question (4–18 words, maximum 140 characters), replacing the declarative punchline on this existing screen. Tie it to a concrete detail in the reading pages; no swipe instructions.
     - **Secondary CTA:** Sleek dark pill with outline: `احفظ الفيديو لتستفيد منه لاحقاً`.
     - **Primary Description Badge:** Prominent, filled Gold Badge (`#F5C518`) with bold black text: `السر الأهم والخطوات التطبيقية بانتظارك في الوصف بالأسفل`.
     - **Indicator Arrow:** Sharp vector golden chevron/arrow pointing downwards directly at the platform's description box.
@@ -198,15 +199,15 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
   - **Outro Voiceover:** (`assets/music/last voicever.mp3`) starts at `t=34.2s` (`volume=1.1`) and plays for 8.0 seconds during the Conclusion & CTA screen (34.2s – 42.2s).
   - **amix Parameters:** Configured with `normalize=0` to ensure vocals remain bold, clear, and unattenuated.
 
-### 2c. Question Endings (Both Video Versions)
+### 2c. Source-specific Endings (Both Video Versions)
 
-- Author `ending_question_ar` alongside the summary, including in supplied Brainstorm analysis JSON. Reuse a valid authored question without an extra model call.
-- Use one concise, source-grounded Arabic question, 4–18 words and at most 140 characters, ending in `؟`. Invite a concrete experience, choice with a reason, or thoughtful comparison, in the spirit of the deep-dive post's final question.
+- Author `ending_question_ar` for V1. For V2, author `ending_text_ar` as one source-specific Footer Action / Question on the existing final 8-second screen. Reuse valid authored text without an extra model call. See the editorial style reference for details.
+- V1 uses one concise, source-grounded Arabic question, 4–18 words and at most 140 characters, ending in `؟`. V2 questions follow the same rules; its alternative action footer follows the editorial style reference. Invite a concrete experience, choice with a reason, or thoughtful comparison, in the spirit of the deep-dive post's final question.
 - Match the source: psychology can invite reflection; science can ask about an implication; history or geopolitics can compare explanations. Do not force practical advice, polarizing allegiance, sensitive disclosure, or unsupported claims.
 - Avoid generic “ما رأيك في هذا الموضوع؟” and multiple stacked questions. Examples: `ما المهارة التي تؤجل التدرب على أصعب جزء فيها؟` / `أي نتيجة في هذه الدراسة غيّرت تفسيرك للمشكلة؟`
 - Keep the existing save/description badges and recorded outro. The question is displayed on screen; do not synthesize additional narration.
-- Save `ending-question-ar.txt` in both versions. V2 also retains `conclusion-ar.txt` as a compatibility alias containing the question.
-- Existing exports remain untouched until rerendered. Rerender reuses the saved question; legacy folders without a valid question need an authored `ending-question-ar.txt` or a question-generation call.
+- Save `ending-question-ar.txt` in V1. V2 saves canonical `ending-text-ar.txt`, with `ending-question-ar.txt` and `conclusion-ar.txt` as compatibility aliases containing the same footer, whether question or action.
+- Existing exports remain untouched until rerendered. Rerender reuses the saved V1 question or V2 footer. Legacy folders need valid authored ending copy or a question-generation call; rerender does not rewrite summary pages.
 
 ### 3. Post-Description File (`post-description.txt`)
 
@@ -240,8 +241,8 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
   - **Strict Single-Video Anti-Bot Protocol:** Directly staged as `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4`. Any intermediate or temporary `brief.mp4` is **immediately deleted upon creation** so platforms never detect bot script filenames on disk or in file pickers.
   - **Anti-Bot Container Spoofing:** Rendered with `-map_metadata -1`, `+bitexact`, `-metadata:s:v:0 encoder=CapCut`, `-metadata:s:a:0 encoder=CapCut`, `-metadata major_brand=mp42`, completely removing FFmpeg `Lavf`/`Lavc` traces.
   - **Acoustic De-duplication:** Subtle imperceptible audio micro-jitter (±0.5%–1.0%) to prevent Content ID and platform algorithms from clustering videos as repeated duplicate templates.
-- `summary-ar.txt` (140–160 word Modern Standard Arabic abstract)
-- `ending-question-ar.txt` (Main on-screen question in either video version; V2 also writes the compatibility file `conclusion-ar.txt`)
+- `summary-ar.txt` (140–160 words of concrete explanatory Modern Standard Arabic copy)
+- `ending-question-ar.txt` (V1 question; V2 compatibility alias). V2 writes canonical `ending-text-ar.txt` and alias `conclusion-ar.txt`.
 - `post-title.txt` (Faithful Arabic translation of the YouTube title, clean without `#shorts`)
 - `post-description.txt` (In-depth narrative description under 2,000 chars, diamond headers `◈`, dynamic hashtags)
 - `deep_dive_summary.txt` (Exhaustive, human-written deep-dive synthesis with English parenthetical concepts, zero markdown signs/annotations, and organic CTA)
@@ -265,7 +266,7 @@ python scripts/avbrief.py run --job "<answered-job.json>"
 # Re-render using saved text; legacy folders without a question may need a text LLM call
 python scripts/avbrief.py rerender --folder "outputs/<folder>"
 
-# High-CTR Thumbnail & Photo Prompt Generation (Thumbnail Master 4.0)
+# Source-led Hybrid Thumbnail & Photo Prompt Generation
 # Auto-skips 4:5 Facebook thumbnail if deep_dive_summary.txt is not requested, saving API tokens & credits
 python scripts/avbrief.py thumbnail --folder "outputs/<folder>"
 python scripts/avbrief.py thumbnail --folder "outputs/<folder>" --kieai

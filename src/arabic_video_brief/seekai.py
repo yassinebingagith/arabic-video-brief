@@ -7,6 +7,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from .editorial_style import CORE_EXPLANATORY_STYLE, SUMMARY_SPEC, REWRITE_STYLE
 from .config import Settings
 from .utils import word_count
 
@@ -27,9 +28,7 @@ Return only a valid JSON object with the following fields:
 1. `source_language`: Spoken language of the source video (e.g., "en", "ar").
 2. `transcript`: Meaningful timestamped segments in the spoken source language.
 3. `post_title_ar`: A direct, faithful, and accurate translation of the source video's original title (from VIDEO CONTEXT) into 100% pure Modern Standard Arabic. Faithfully translate the core meaning and accurately transliterate any foreign guest or channel names phonetically into Arabic letters (e.g. "Your Lack of Personal Purpose Is Causing Your Romantic Obsession - Jett Franzen" -> "غياب هدفك الشخصي يسبب هوسك العاطفي – جيت فرانزن"). Strictly no English words, no emojis, and no hashtags.
-4. `summary_ar`: Exactly one self-contained Modern Standard Arabic text of 140 to 160 words total, structured into exactly two balanced paragraphs (70 to 80 words each), separated by a single newline:
-   - Paragraph 1 (Page 1 of V1, 0-15s, 70-80 words): Addictive storytelling hook plunging straight into the core reality, shocking facts, or daily struggle revealed in the video. Zero meta-language.
-   - Paragraph 2 (Page 2 of V1, 15-30s, 70-80 words): The core value delivery. If the video is practical/self-dev/health/career: deliver concrete pro-tips, golden rules, and actionable solutions the viewer can apply. If the video is informative/news/political/philosophical: deliver the deep takeaway, the hidden game behind the scenes, and the real-world consequence affecting their future. No titles or headers in this field.
+""" + SUMMARY_SPEC + "\n" + CORE_EXPLANATORY_STYLE + """
 5. `post_description`: An in-depth, addictive narrative article in simplified Modern Fusha structured in this exact format:
    - Line 1: Specific Arabic topic title followed by an en-dash and speaker/channel name (e.g. `خمس وظائف فقط ستصمد أمام الذكاء الاصطناعي بحلول 2030 – د. رومان يامبولسكي`). Do NOT output literal placeholder text like "عنوان الموضوع".
    - Opening paragraph: Addictive, relatable hook (around 220-270 characters) drawing the reader into the topic immediately. No meta-talk.
@@ -100,6 +99,8 @@ def _adjust_summary_seekai(
 ) -> str:
     prompt = f"""
 أعد صياغة النص العربي التالي بدقة بحيث يكون ملخصاً شاملاً ومتماسكاً باللغة العربية الفصحى يتكون من فقرتين متوازنتين، ويكون إجمالي عدد الكلمات بدقة بين {min_words} و {max_words} كلمة (حوالي 75 كلمة لكل فقرة). لا تضف أي عناوين أو مقدمات أو خاتمات، فقط النص العربي:
+
+{REWRITE_STYLE}
 
 النص الأصلي:
 {current_summary}

@@ -37,14 +37,17 @@
 5. **0:34.2 – 0:42.2 (8.0s) — Conclusion & CTA Screen:**
    - Top panel: Thumbnail card with kinetic Ken Burns push-in zoom and floating metadata badge.
    - Bottom panel: Full-page conclusion screen:
-     - Gold-highlighted topic-specific Arabic question replacing the punchline: 4–18 words, at most 140 characters, ending in `؟`. Invite an experience, reasoned choice, or comparison grounded in the source; avoid generic “ما رأيك؟”.
+     - Gold-highlighted source-specific Footer Action / Question replacing the punchline: 4–18 words, at most 140 characters. Tie it to a concrete explanation on the pages. Avoid generic “ما رأيك؟”, declarative conclusions and swipe instructions.
      - Secondary CTA pill: `احفظ الفيديو لتستفيد منه لاحقاً`.
      - Prominent Gold Badge (`#F5C518`) with down arrow: `السر الأهم والخطوات التطبيقية بانتظارك في الوصف بالأسفل`.
      - 130px circular Capsule Fikr brand logo.
      - Dedicated outro voiceover (`last voicever.mp3`) plays throughout the entire 8.0s CTA page.
 
 
-The opening narration remains the translated source title plus the description-directed suffix specified below; do not add full-summary or ending-question narration. Save `ending-question-ar.txt`, with the same question in `conclusion-ar.txt` for compatibility. Page styling, word counts, number formatting, thumbnail generation, the blue frame, and the recorded 8-second outro remain unchanged. Reading durations increase by exactly 20%: 9→10.8s and 6.5→7.8s for each remaining page.
+The opening narration remains the translated source title plus the description-directed suffix specified below; do not add full-summary or ending-question narration. Save canonical `ending-text-ar.txt`, with the same footer in `ending-question-ar.txt` and `conclusion-ar.txt` for compatibility. Page styling, word counts, number formatting, the blue frame, and the recorded 8-second outro remain unchanged. Thumbnail direction follows the editorial reference. Reading durations increase by exactly 20%: 9→10.8s and 6.5→7.8s for each remaining page.
 
 ## Opening narration and music selection
 Narrate the translated title, then `ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف.` This changes only the ElevenLabs script, not the displayed page copy. The configured music pool contains the original Sadness and Sorrow track and `godfather_0013.mp3`, sourced from https://www.youtube.com/watch?v=AJgE_dLWsuQ beginning at 0:13. Choose independently with equal probability on each render; repeats are allowed. Preserve current ducking and fade music over 32.2–34.2s. Loop the chosen input when needed so neither track ends early. Record the chosen filename in the render manifest.
+
+## Reading-copy direction
+Follow [v1-v2-editorial-style.md](v1-v2-editorial-style.md) for source-specific explanatory writing and hybrid thumbnail direction. Preserve the timeline and rendering geometry above.

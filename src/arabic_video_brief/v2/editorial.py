@@ -10,6 +10,7 @@ from typing import Any
 
 from ..config import Settings
 from ..utils import word_count
+from ..editorial_style import REWRITE_STYLE
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,7 @@ def split_half_into_two_pages(half_text: str, half_index: int, settings: Setting
     prompt = f"""
 أعد تقسيم وصياغة الفقرة العربية التالية إلى صفحتين متوازنتين من حيث الطول والمعنى (بين 30 و 45 كلمة لكل صفحة).
 القواعد الصارمة:
+{REWRITE_STYLE}
 1. الأمانة التامة للنص الأصلي: يمنع منعاً باتاً إضافة أي نصائح خارجية، أو اختراع روتين صباحي أو مسائي، أو ذكر عادات نوم أو أي معلومات غير موجودة في النص الأصلي. التزم بدقة بنقل نفس الأفكار والحقائق الواردة في النص دون زيادة أو نقصان.
 2. يمنع قطع الجملة بين الصفحتين. كل صفحة يجب أن تبدأ بجملة مستقلة المعنى وتنتهي بنقطة تامة.
 3. لا تستخدم نقاطاً نقطية أو عناوين.
@@ -269,8 +271,8 @@ def build_v2_editorial_package(
             str(p.get("text", "") if isinstance(p, dict) else p).strip().replace("{", "").replace("}", "")
             for p in raw_pages
         ]
-        if not summary_ar:
-            summary_ar = "\n\n".join(four_pages)
+        # Export the actual reading copy, not a separately adjusted base summary.
+        summary_ar = "\n\n".join(four_pages)
     else:
         # Base summary must have two semantic halves
         paragraphs = [p.strip() for p in summary_ar.split("\n") if p.strip()]
@@ -320,8 +322,8 @@ def build_v2_editorial_package(
             explanation="Direct title + Option 3 voiceover hook",
         )
 
-    from ..ending import resolve_ending_question
-    conclusion = resolve_ending_question(base_analysis, metadata, summary_ar or ' '.join(four_pages), settings)
+    from ..ending import resolve_v2_footer
+    conclusion = resolve_v2_footer(base_analysis, metadata, ' '.join(four_pages), settings)
     conclusion_hl = [conclusion]
     legacy = base_analysis.get("conclusion")
     cta_fields = legacy if isinstance(legacy, dict) else base_analysis
@@ -330,7 +332,9 @@ def build_v2_editorial_package(
 
     creative_plan = {
         "version": "v2",
+        "ending_text_ar": conclusion,
         "ending_question_ar": conclusion,
+        "thumbnail_hook_ar": base_analysis.get("thumbnail_hook_ar", ""),
         "voiceover": {
             "tts_text": voiceover_tts,
             "title_ar": clean_title_for_tts,

@@ -90,20 +90,11 @@ class ImageGeneratorClient:
                 try:
                     data = json.loads(manifest_file.read_text(encoding="utf-8"))
                     vid_id = data.get("metadata", {}).get("id") or data.get("metadata", {}).get("video_id")
+                    if not vid_id and data.get("source"):
+                        from ..utils import youtube_video_id
+                        vid_id = youtube_video_id(data["source"])
                 except Exception:
                     pass
-
-            if not vid_id:
-                # Extract 11-character YouTube video ID from folder or parent folder name
-                import re
-                target_names = [folder.name]
-                if folder.name == "v2" and folder.parent.exists():
-                    target_names.append(folder.parent.name)
-                for name in target_names:
-                    m = re.search(r"([a-zA-Z0-9_-]{11})$", name)
-                    if m:
-                        vid_id = m.group(1)
-                        break
 
             if vid_id:
                 # Prefer maxresdefault, verify or fallback to hqdefault
@@ -116,7 +107,10 @@ class ImageGeneratorClient:
                 except Exception:
                     reference_image_url = hq_url
             else:
-                reference_image_url = "https://i.ytimg.com/vi/8vYZ5oQb4M8/maxresdefault.jpg"
+                raise ValueError(
+                    "No source thumbnail URL is available. Supply this episode's original reference "
+                    "or use the saved manual prompts with its local image; unrelated fallback images are not allowed."
+                )
 
         create_url = "https://api.kie.ai/api/v1/jobs/createTask"
         headers = {

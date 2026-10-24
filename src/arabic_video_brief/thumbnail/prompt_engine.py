@@ -1,3 +1,8 @@
+"""Thumbnail package compatibility types and explicit legacy presets.
+
+Production generate_thumbnail_package delegates to source_led; the old keyword
+helpers below remain import-compatible but do not choose the default treatment.
+"""
 from __future__ import annotations
 
 import json
@@ -1085,261 +1090,11 @@ def generate_thumbnail_package(
     style_preference: str | None = None,
     archetype_preference: str | None = None,
 ) -> ThumbnailPackage:
-    """Generates the master 4.0 thumbnail package for Facebook 4:5 and TikTok/Shorts 9:16 with Grounded Open Loops."""
-    manifest_data = manifest_data or {}
-    creative_plan = creative_plan or {}
-
-    meta = manifest_data.get("metadata", {})
-    original_title = meta.get("title", "")
-    speaker = meta.get("uploader", "") or meta.get("channel", "")
-    description = meta.get("description", "")
-
-    # Clean and refine speaker identity for podcast / interview formats
-    speaker_lower = speaker.lower()
-    full_info = f"{original_title} {description}".lower()
-    if "jonathan rauch" in full_info:
-        speaker = "Jonathan Rauch"
-    elif "jay shetty" in speaker_lower or "jay shetty" in full_info:
-        if "john edward" in full_info:
-            speaker = "Jay Shetty and John Edward"
-        else:
-            speaker = "Jay Shetty"
-    elif speaker.lower().endswith(" podcast"):
-        speaker = speaker[:-8].strip()
-
-    # Format title & extract clean power word (ignoring numbers & particles)
-    clean_title, power_word, typography_spec = format_dual_tone_title(post_title_ar)
-
-    # Detect modality (photographic vs artistic illustration / fine art)
-    modality = detect_source_modality(
-        reference_thumbnail_path=reference_thumbnail_path,
-        title=f"{original_title} {clean_title}",
-        description=description,
-    )
-
-    # Extract context-driven curiosity visual clue (Environment & Scene-Based)
-    curiosity_hint = extract_curiosity_visual_hint(
-        title=f"{original_title} {clean_title}",
-        description=description,
-        creative_plan=creative_plan,
-        speaker_name=speaker,
-        modality=modality,
-    )
-
-    # If curiosity_hint provides a refined power word, re-format the dual-tone title
-    if curiosity_hint and curiosity_hint.power_word:
-        clean_title, power_word, typography_spec = format_dual_tone_title(
-            clean_title,
-            power_word_override=curiosity_hint.power_word,
-        )
-
-    # Resolve visual style first (allowing style_override from curiosity hint if user didn't specify preference)
-    effective_style_pref = style_preference or (curiosity_hint.style_override if curiosity_hint else None)
-    style = resolve_visual_style(
-        title=f"{original_title} {clean_title}",
-        description=description,
-        style_preference=effective_style_pref,
-    )
-    if style.id == "fine_art_oil":
-        modality = "fine_art_oil"
-    elif modality == "illustrated_artistic" and style.id not in ("fine_art_oil", "animated_3d"):
-        if not style_preference:
-            style = STYLE_REGISTRY["fine_art_oil"]
-
-    # Resolve focal archetype
-    has_speaker = bool(speaker) and modality not in ("illustrated_artistic", "fine_art_oil")
-    has_ref_image = bool(reference_thumbnail_path and reference_thumbnail_path.exists())
-    archetype, archetype_recipe = resolve_focal_archetype(
-        title=f"{original_title} {clean_title}",
-        description=description,
-        creative_plan=creative_plan,
-        has_speaker=has_speaker,
-        has_ref_image=has_ref_image,
-        user_preference=archetype_preference,
-        hint=curiosity_hint,
-        speaker_name=speaker if has_speaker else "",
-        modality=modality,
-    )
-
-    if modality in ("illustrated_artistic", "fine_art_oil"):
-        speaker_ref = "the central figure"
-    else:
-        speaker_ref = f"the likeness of {speaker}" if speaker else "the focal subject"
-    ref_mention = ""
-    if has_ref_image:
-        if modality in ("illustrated_artistic", "fine_art_oil"):
-            ref_mention = (
-                f"Image Reference: Faithfully mirror the classical oil painting style, fine-art canvas texture, chiaroscuro lighting, and painterly brushwork from '{reference_thumbnail_path.name}'. "
-                f"Preserve the historical fine-art essence and intellectual atmosphere while rendering the composition in full museum quality. "
-                f"STRICTLY FORBIDDEN: Do NOT convert this into modern studio photography, modern office settings, or digital corporate stock imagery. "
-            )
-        elif archetype == FocalArchetype.SYMBOLIC_ARTIFACT or curiosity_hint.domain in ("chess_strategy", "classical_strategy_fine_art"):
-            ref_mention = (
-                f"Image Reference: Preserve the tactile physical materials, sculpt, silhouette, and iconic essence of the central object/artifact from '{reference_thumbnail_path.name}', "
-                f"while placing it in a brand new, highly cinematic and dramatic atmospheric environment. "
-            )
-        else:
-            ref_mention = (
-                f"Image Reference: Preserve the realistic facial features and authentic hair of {speaker_ref} from '{reference_thumbnail_path.name}', "
-                f"while placing them in a brand new, highly cinematic and dramatic atmospheric environment. Do NOT replicate plain flat studio walls or generic webcam backgrounds from the reference photo. "
-            )
-
-    if modality in ("illustrated_artistic", "fine_art_oil"):
-        realism_mandate = (
-            "Fine Art Oil Painting & Masterwork Atmosphere Mandate:\n"
-            "Incorporate expressive fine-art brushwork, rich painterly textures, and poetic concept art harmony. "
-            "Faithfully mirror the artistic medium (classical museum oil-on-canvas / chiaroscuro impasto) from the reference thumbnail. "
-            "STRICTLY FORBIDDEN: Zero modern corporate stock photography stiffness, zero modern office clothing or tech gadgets, zero robots, and zero flat 3D renders."
-        )
-    else:
-        realism_mandate = (
-            "Signature Realism & Authenticity Mandate (Anti-AI-Slop Defense):\n"
-            "Incorporate authentic, non-generic one-of-one textures: natural skin pores, realistic micro-creases, authentic fabric weaves on clothing, "
-            "and natural hair strands. Absolutely zero plastic skin, zero airbrushed smoothing, and zero generic CGI gloss. Every material must have tangible, tactile physical properties."
-        )
-
-    # --------------------------------------------------------------------------
-    # 1. Stun Gun Framework Strategy for Facebook 4:5 Photo Post
-    # --------------------------------------------------------------------------
-    fb_strategy_summary = (
-        f"1. Visual Stop (0.1s Hook): High-contrast, grounded {archetype.value.replace('_', ' ')} with natural scene immersion.\n"
-        f"2. Foreground Context: {curiosity_hint.foreground_clue}\n"
-        f"3. Background Context: {curiosity_hint.background_clue}\n"
-        f"4. Contextual Clue: {curiosity_hint.environmental_clue[:80]}...\n"
-        f"5. Natural Subject Dynamic: {speaker_ref} in unforced, authentic posture ({curiosity_hint.subject_state[:70]}...).\n"
-        f"6. Visual Curiosity Gap: {curiosity_hint.open_loop_explanation}\n"
-        f"7. Clean Headline Focus: Single bold headline '{clean_title}' (power-word: '{power_word}'). Zero distracting sticker decals."
-    )
-
-    fb_master_prompt = f"""[Master AI Image Prompt — Facebook High-CTR Photo Post (4:5 Aspect Ratio)]
-
-Master Creative Composition:
-- Aspect Ratio: 4:5 vertical frame (1080x1350 resolution), engineered for full screen dominance in Facebook mobile and desktop feeds.
-- Visual Style Archetype: {style.name}. {style.description}
-- Lighting & Camera: {style.camera_and_lighting}
-- Color Palette: {style.color_palette}
-- Atmosphere & Texture: {style.texture_and_atmosphere}
-- Full Frame Environmental Bleed:
-  The entire canvas from top edge to bottom edge is fully immersed in the rich, deep atmospheric environment of the chosen style. The upper title area seamlessly shares the same dramatic lighting and cinematic backdrop as the rest of the scene. STRICTLY NO isolated white headers, NO cutouts on flat white backgrounds.
-
-Focal Subject & Curiosity Architecture (Central 75% of Frame):
-{ref_mention}{archetype_recipe}
-Ensure maximum clarity and visual focus: the subject must immediately captivate the eye within 0.1 seconds. Eliminate all distracting peripheral clutter, unnecessary props, and visual noise.
-
-Depth Layering & Spatial Composition (Foreground & Background Context):
-- Foreground Contextual Layer: {curiosity_hint.foreground_clue}. Grounded tactile element or framing in the immediate foreground that pulls the viewer directly into the scene with cinematic depth.
-- Central Midground Subject: {speaker_ref} ({curiosity_hint.subject_state}).
-- Focal Tangible Object & Action: {curiosity_hint.tangible_object}. {curiosity_hint.subject_action}.
-- Background Environmental Horizon: {curiosity_hint.background_clue}. Expansive atmospheric backdrop providing deep narrative context and eliminating flat sterile walls.
-- Core Symbolic Metaphor: {curiosity_hint.core_metaphor}.
-
-Curiosity Gap & Open Loop Mandate:
-- Open Loop Narrative: {curiosity_hint.open_loop_explanation}
-- The Golden CTR Rule: Hint at the core theme through natural scene atmosphere and genuine human tension; NEVER spoil the conclusion or add artificial cartoon props.
-
-Typography & Layout Mandate (Zero Post-Production Execution):
-- Single Dominant Headline Banner (Upper 20% Safe Zone, Y: 80px to 300px):
-  Render the single Modern Standard Arabic title in bold contemporary geometric calligraphy (Cairo Black / Tajawal Black style):
-  "{clean_title}"
-- Typography High-Impact Dual-Tone Styling:
-  {typography_spec}
-- Pure Clean Visual Focus (STRICTLY ZERO DECALS & ANTI-PASSPORT BACKGROUND MANDATE):
-  STRICTLY NO FLOATING STICKERS, NO OVAL PILL BADGES, NO SECONDARY CAPTIONS, NO BOTTOM LABELS, AND NO WATERMARKS.
-  STRICTLY FORBIDDEN: Flat white studio backgrounds, white cutout headers, plain passport/ID photo backdrops, sterile white apartment walls, and corporate headshot lighting. The entire canvas MUST be a rich, atmospheric, cinematic environment with depth, shadow gradients, and psychological mood.
-- Right-to-Left (RTL) Reading Flow:
-  Composition and negative space are strictly mirrored for Arabic Right-to-Left eye movement, leading the gaze naturally from upper right to center to lower left.
-
-{realism_mandate}"""
-
-    fb_text_specs = {
-        "aspect_ratio": "4:5 (1080x1350 px)",
-        "headline_arabic": clean_title,
-        "power_word_highlighted": power_word,
-        "font_recommendation": "Cairo Black or Tajawal Black",
-        "typography_styling": typography_spec,
-        "header_position": "Top safe margin (Y: 80px to 300px)",
-        "footer_specs": "None (Clean visual area, zero text at bottom)",
-    }
-
-    # --------------------------------------------------------------------------
-    # 2. Stun Gun Framework Strategy for TikTok & YouTube Shorts Cover (9:16)
-    # --------------------------------------------------------------------------
-    vertical_strategy_summary = (
-        f"1. Visual Stop: Kinetic focal subject centered inside the 3:4/4:5 feed safe zone.\n"
-        f"2. Foreground Context: {curiosity_hint.foreground_clue}\n"
-        f"3. Background Context: {curiosity_hint.background_clue}\n"
-        f"4. Contextual Clue: Natural environmental integration ({curiosity_hint.environmental_clue[:80]}...).\n"
-        f"5. Natural Subject Dynamic: {speaker_ref} in authentic posture with zero awkward hand props.\n"
-        f"6. Visual Curiosity Gap: {curiosity_hint.open_loop_explanation}\n"
-        f"7. Safe Crop Protection: Resilient against 3:4, 4:5, and 1:1 mobile feed crops; bottom 25% kept strictly text-free."
-    )
-
-    vertical_master_prompt = f"""[Master AI Image Prompt — TikTok & YouTube Shorts Vertical Cover (9:16 Aspect Ratio)]
-
-Master Creative Composition:
-- Aspect Ratio: 9:16 vertical full-screen (1080x1920 resolution), engineered for TikTok profile grid covers, YouTube Shorts thumbnails, and Instagram Reels previews.
-- Visual Style Archetype: {style.name}. {style.description}
-- Lighting & Camera: {style.camera_and_lighting}
-- Color Palette: {style.color_palette}
-- Atmosphere & Texture: {style.texture_and_atmosphere}
-
-Mobile Feed Crop-Proof Safe Zones (Crucial 3:4 / 4:5 / 1:1 Geometry):
-- Top Margin (Y: 0 to 320px): Clean background bleed, kept free of text to clear mobile status bars and notches.
-- Upper Safe Title Zone (Y: 320px to 560px): The single Arabic headline is positioned strictly within this upper safe window. When platforms crop the 9:16 cover into a 3:4 or 4:5 card in profile grids or suggested feeds, this title remains 100% visible, fully readable, and safely distanced from all edges.
-- Central Core Visual (Y: 580px to 1420px): The primary focal subject and emotional peak are centered inside this safe window, ensuring perfect 1:1 square crop visibility inside chat bubbles and mobile DM shares.
-- Bottom UI Clearance Zone (Y: 1450px to 1920px): STRICTLY 100% TEXT-FREE AND BADGE-FREE. This lower 25% area serves solely as atmospheric background bleed so platform play counters (e.g., ▷ 515), usernames, and action buttons NEVER collide with or obscure any content.
-
-Focal Subject & Curiosity Architecture (Central Y: 580 to Y: 1420):
-{ref_mention}{archetype_recipe}
-Ensure maximum clarity and visual focus: the subject must immediately captivate the eye within 0.1 seconds. Eliminate all distracting peripheral clutter, unnecessary props, and visual noise.
-
-Depth Layering & Spatial Composition (Mobile Feed 9:16 Hierarchy):
-- Foreground Contextual Layer (Lower/Front Grounding): {curiosity_hint.foreground_clue}. Establishes tactile depth and physical grounding within the lower third.
-- Central Focal Midground (Center Safe Window Y: 580 to Y: 1420): {speaker_ref} ({curiosity_hint.subject_state}).
-- Focal Tangible Object & Action: {curiosity_hint.tangible_object}. {curiosity_hint.subject_action}.
-- Background Environmental Horizon (Upper Atmospheric Bleed): {curiosity_hint.background_clue}. Seamlessly fills the background behind the subject and title safe zone.
-- Core Symbolic Metaphor: {curiosity_hint.core_metaphor}.
-
-Curiosity Gap & Open Loop Mandate:
-- Open Loop Narrative: {curiosity_hint.open_loop_explanation}
-- The Golden CTR Rule: Hint at the core theme through natural scene atmosphere; NEVER spoil the conclusion or add artificial cartoon props.
-
-Typography Mandate (Zero Post-Production Execution):
-- Single Dominant Headline Banner:
-  Render the single Modern Standard Arabic title in bold geometric Arabic calligraphy (Cairo Black / Tajawal Black style):
-  "{clean_title}"
-- High-Impact Dual-Tone Styling:
-  {typography_spec}
-- Zero Bottom Clutter, Zero Sticker Badges & Anti-Passport Background Mandate:
-  STRICTLY NO FLOATING STICKERS, NO OVAL PILL BADGES, NO SECONDARY CAPTIONS, NO BOTTOM LABELS.
-  STRICTLY FORBIDDEN: Plain flat white studio walls, passport/ID photo backdrops, and sterile white backgrounds. The environment MUST possess rich cinematic depth, chiaroscuro shadow gradients, and dramatic atmospheric mood.
-
-{realism_mandate}"""
-
-    vertical_text_specs = {
-        "aspect_ratio": "9:16 (1080x1920 px)",
-        "headline_arabic": clean_title,
-        "power_word_highlighted": power_word,
-        "font_recommendation": "Cairo Black or Tajawal Black",
-        "typography_styling": typography_spec,
-        "title_safe_zone": "Upper crop-safe window (Y: 320px to 560px), protected against 3:4 and 4:5 grid crops",
-        "core_visual_safe_zone": "Center square (Y: 580px to 1420px), protected for 1:1 DM and profile previews",
-        "bottom_clearance_zone": "Bottom 25% (Y: 1450px to 1920px) strictly text-free for platform UI clearance",
-    }
-
-    return ThumbnailPackage(
-        video_title_ar=clean_title,
-        visual_style=style,
-        focal_archetype=archetype.value,
-        reference_thumbnail_path=reference_thumbnail_path,
-        fb_strategy_summary=fb_strategy_summary,
-        fb_master_prompt=fb_master_prompt,
-        fb_text_specs=fb_text_specs,
-        vertical_strategy_summary=vertical_strategy_summary,
-        vertical_master_prompt=vertical_master_prompt,
-        vertical_text_specs=vertical_text_specs,
-        curiosity_hint=curiosity_hint,
-        source_modality=modality,
+    """Build source-led covers without the legacy keyword/style/prop presets."""
+    from .source_led import build_source_led_package
+    return build_source_led_package(
+        post_title_ar, manifest_data, creative_plan, reference_thumbnail_path,
+        style_preference, archetype_preference,
     )
 
 
@@ -1370,7 +1125,7 @@ def save_thumbnail_prompts(
     # 1. Facebook 4:5 Prompt File (only if include_facebook is True)
     if include_facebook and fb_file:
         fb_content = f"""================================================================================
-YOUTUBE THUMBNAIL MASTER 4.0 — FACEBOOK PHOTO POST (4:5 ASPECT RATIO)
+SOURCE-LED HYBRID THUMBNAILS — FACEBOOK PHOTO POST (4:5 ASPECT RATIO)
 ================================================================================
 
 [STRATEGY SUMMARY]
@@ -1399,7 +1154,7 @@ MANUAL TEXT OVERLAY FALLBACK SPECS:
 
     # 2. TikTok / Shorts 9:16 Prompt File
     vertical_content = f"""================================================================================
-YOUTUBE THUMBNAIL MASTER 4.0 — TIKTOK & SHORTS COVER (9:16 ASPECT RATIO)
+SOURCE-LED HYBRID THUMBNAILS — TIKTOK & SHORTS COVER (9:16 ASPECT RATIO)
 ================================================================================
 
 [STRATEGY SUMMARY]
@@ -1429,7 +1184,7 @@ MANUAL TEXT OVERLAY FALLBACK SPECS:
 
     # 3. Comprehensive Markdown Guide for the User
     ref_line = (
-        f"3. **Speaker / Likeness Reference**: [`{package.reference_thumbnail_path.name}`](file:///{package.reference_thumbnail_path.as_posix()})\n"
+        f"3. **Original thumbnail / Style and identity reference**: [`{package.reference_thumbnail_path.name}`](file:///{package.reference_thumbnail_path.as_posix()})\n"
         if package.reference_thumbnail_path and package.reference_thumbnail_path.exists()
         else ""
     )
@@ -1446,23 +1201,24 @@ MANUAL TEXT OVERLAY FALLBACK SPECS:
 - **Visual Medium / Modality**: {package.source_modality.replace('_', ' ').title()}
 """
 
-    readme_content = f"""# High-CTR Visual Assets Guide (Thumbnail Master 4.0)
+    readme_content = f"""# Source-led Thumbnail Guide
 
-This folder contains AI prompt assets engineered according to the **YouTube Thumbnail Master 4.0** system.
+These prompts preserve the source thumbnail's medium and visual language, with an episode-specific hybrid composition and short Arabic hook. Attach the original thumbnail; its pixels guide the image generator. Existing video titles and voiceovers are not rewritten.
 
 ## Configuration for This Video:
 - **Visual Style**: {package.visual_style.name}
 - **Focal Archetype**: {package.focal_archetype.replace('_', ' ').title()}
-- **Main Title**: {package.video_title_ar}
-- **Power Word Highlight**: {package.fb_text_specs['power_word_highlighted']}
+- **Full post title (unchanged)**: {package.video_title_ar}
+- **Thumbnail hook**: {package.fb_text_specs['headline_arabic']}
+- **Optional emphasis word**: {package.fb_text_specs['power_word_highlighted']}
 {hint_section}
 ## Generated Prompt Files:
-{f"1. **Facebook Photo Post Prompt (4:5)**: [`thumbnail_prompt_facebook_4x5.txt`](file:///{fb_file.as_posix()})\\n" if fb_file else "1. **Facebook Photo Post Prompt (4:5)**: *Skipped (no deep-dive summary requested)*\\n"}2. **TikTok / Shorts Cover Prompt (9:16)**: [`thumbnail_prompt_vertical_9x16.txt`](file:///{vertical_file.as_posix()})
+{f"1. **Facebook Photo Post Prompt (4:5)**: [`thumbnail_prompt_facebook_4x5.txt`](file:///{fb_file.as_posix()})\n" if fb_file else "1. **Facebook Photo Post Prompt (4:5)**: *Skipped (no deep-dive summary requested)*\n"}2. **TikTok / Shorts Cover Prompt (9:16)**: [`thumbnail_prompt_vertical_9x16.txt`](file:///{vertical_file.as_posix()})
 {ref_line}
 ---
 
 ## Mobile Feed Safe-Zone Design (9:16):
-- **Title Safe Zone (Y: 320 to 560px)**: Survives 3:4 and 4:5 feed crops in TikTok, Reels, and YouTube Shorts profile grids.
+- **Title Safe Zone (Y: 320 to 560px)**: Designed for centred 3:4 and 4:5 crops; check the actual platform preview. Square crops can trim the headline.
 - **Visual Tension Center (Y: 580 to 1420px)**: Optimized for 1:1 square preview in direct message chat bubbles.
 - **Bottom Clearance (Y: 1450 to 1920px)**: 100% text-free so platform play counts (`▷ 515`) and usernames never obscure content.
 
@@ -1471,9 +1227,9 @@ This folder contains AI prompt assets engineered according to the **YouTube Thum
 ## How to Create the Images Manually:
 
 ### Step 1: Generate Visual
-- Open **ChatGPT (GPT-4o)**, **Midjourney v6**, or **Flux**.
+- Open your chosen image generator with image-reference support.
 - Copy the master prompt from {f"[`thumbnail_prompt_facebook_4x5.txt`](file:///{fb_file.as_posix()}) or " if fb_file else ""}[`thumbnail_prompt_vertical_9x16.txt`](file:///{vertical_file.as_posix()}).
-- Attach `{package.reference_thumbnail_path.name if package.reference_thumbnail_path else 'source_thumbnail.jpg'}` as an image reference if present.
+- Attach `{package.reference_thumbnail_path.name if package.reference_thumbnail_path else 'source_thumbnail.jpg'}` as Image 1 when present. A filename in the prompt does not attach the image. If missing, the prompt explicitly uses topic-only direction and cannot promise source-style continuity.
 
 ### Step 2: Save to Output Folder
 Save your generated image directly in this folder:

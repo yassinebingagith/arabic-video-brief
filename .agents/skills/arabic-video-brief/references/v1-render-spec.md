@@ -31,3 +31,6 @@
 
 ## Music source and coverage
 Use the 30-second excerpt from [Andrea Vanzo’s Amélie performance](https://www.youtube.com/watch?v=e6Po2lDHD1I), source time 0:30–1:00. Provenance is saved in `assets/music/v1-music-source.json`. The renderer loops the music input defensively, trims it to the 30-second reading section, fades in at 0–1s and out at 28–30s, then leaves the existing outro for 30–38s. The old 19.99-second V1 asset is no longer selected. V2 music is unchanged.
+
+## Reading-copy direction
+Follow [v1-v2-editorial-style.md](v1-v2-editorial-style.md) for source-specific explanatory writing and hybrid thumbnail direction. Preserve the timeline and rendering geometry above.

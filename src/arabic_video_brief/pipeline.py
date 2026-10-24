@@ -381,6 +381,7 @@ def process_source(
                 fb_p, vert_p, _ = process_folder_thumbnails(
                     item_dir,
                     manifest_data={"metadata": metadata, "source": source},
+                    creative_plan=analysis,
                     generate_kieai=use_kieai,
                     include_facebook=generate_deepdive,
                 )
@@ -414,6 +415,7 @@ def process_source(
             "post_description": post_description,
             "summary_words": len(analysis["summary_ar"].split()),
             "pages_ar": [page_one, page_two],
+            "thumbnail_hook_ar": analysis.get("thumbnail_hook_ar", ""),
             "ending_question_ar": ending_question,
             "clip_candidates": [],
             "selected_clip": selected,

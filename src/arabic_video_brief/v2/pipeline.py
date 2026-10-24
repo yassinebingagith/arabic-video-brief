@@ -100,19 +100,10 @@ def process_source_v2(
 
         v2_dir.mkdir(parents=True, exist_ok=True)
 
-        # Stage 1: Base Analysis (140-160 words, 2 semantic halves)
+        # Stage 1: source-grounded analysis with authored explanatory pages.
+        # Do not silently reuse an old V1 summary and carry its previous writing
+        # style into a new V2 run. Explicit supplied analysis remains reusable.
         analysis = analysis_override
-        if analysis is None and (parent_dir / "summary-ar.txt").exists():
-            try:
-                v1_sum = (parent_dir / "summary-ar.txt").read_text(encoding="utf-8").strip()
-                if v1_sum and len(v1_sum) >= 100:
-                    analysis = {
-                        "summary_ar": v1_sum,
-                        "post_title_ar": (parent_dir / "post-title.txt").read_text(encoding="utf-8").strip() if (parent_dir / "post-title.txt").exists() else metadata.get("title", ""),
-                        "post_description": (parent_dir / "post-description.txt").read_text(encoding="utf-8").strip() if (parent_dir / "post-description.txt").exists() else "",
-                    }
-            except Exception:
-                analysis = None
 
         actual_model = (
             settings.apinex_model
@@ -247,6 +238,7 @@ def process_source_v2(
         hook_tts_path.write_text(editorial.hook.tts_text, encoding="utf-8")
 
         (v2_dir / "ending-question-ar.txt").write_text(editorial.conclusion_ar, encoding="utf-8")
+        (v2_dir / "ending-text-ar.txt").write_text(editorial.conclusion_ar, encoding="utf-8")
         conclusion_ar_path = v2_dir / "conclusion-ar.txt"
         conclusion_ar_path.write_text(editorial.conclusion_ar, encoding="utf-8")
 
@@ -324,6 +316,8 @@ def process_source_v2(
             },
             "pages": pages_payload,
             "ending_question_ar": editorial.conclusion_ar,
+            "ending_text_ar": editorial.conclusion_ar,
+            "thumbnail_hook_ar": editorial.creative_plan.get("thumbnail_hook_ar", ""),
             "conclusion": {
                 "text": editorial.conclusion_ar,
                 "highlights": editorial.conclusion_highlights,
@@ -343,6 +337,7 @@ def process_source_v2(
                 "hook_voice": str(hook_audio_path) if has_hook_audio else None,
                 "conclusion_ar": str(conclusion_ar_path),
                 "ending_question_ar": str(v2_dir / "ending-question-ar.txt"),
+                "ending_text_ar": str(v2_dir / "ending-text-ar.txt"),
                 "cta_ar": str(cta_ar_path),
                 "creative_plan": str(creative_plan_path),
                 "transcript": str(transcript_path),

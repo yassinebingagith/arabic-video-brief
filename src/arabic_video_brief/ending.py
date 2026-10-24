@@ -38,6 +38,8 @@ def resolve_ending_question(analysis: dict[str, Any], metadata: dict[str, Any], 
 العنوان: {metadata.get('title', '')}
 الملخص: {summary}
 السؤال قابل للإجابة بتجربة أو اختيار مع تعليل أو مقارنة وجهتي نظر؛ لا تطلب إفشاء معلومات حساسة.
+اكتب بروح تذييل شريحة تفسيرية: اربط السؤال بتفصيل أو آلية أو مثال محدد شُرح في الملخص، واجعل القارئ يطبقه أو يفحصه في موقف واضح.
+لا تكرر عنوان الفيديو بصيغة سؤال، ولا تسأل عن «فكرة ستطبقها اليوم» دون تسميتها، ولا تستخدم خاتمة تحفيزية أو طلب السحب إلى شريحة أخرى.
 من 4 إلى 18 كلمة وبحد أقصى 140 حرفاً، وينتهي بعلامة استفهام عربية.
 لا تكتب خلاصة تقريرية ولا سؤال «ما رأيك؟» العام ولا تجمع طلبات الحفظ والمشاركة والمتابعة.
 لا تفترض نصيحة عملية لكل موضوع؛ طابق السؤال مع العلم أو التاريخ أو الخبر أو النفس حسب المصدر.
@@ -54,3 +56,29 @@ def resolve_ending_question(analysis: dict[str, Any], metadata: dict[str, Any], 
             pass
         prompt += "\nالناتج السابق غير صالح؛ أعد سؤالاً واحداً قصيراً بالشكل المطلوب فقط."
     raise ValueError("Could not produce a valid Arabic ending question; supply ending_question_ar in the analysis JSON.")
+
+
+def normalize_footer(value: Any) -> str:
+    """V2 permits one question or a concrete action; old statements are not actions."""
+    question = normalize_question(value)
+    if question:
+        return question
+    text = " ".join(str(value or "").replace("{", "").replace("}", "").split())
+    if not 4 <= len(text.split()) <= 18 or len(text) > 140:
+        return ""
+    if not re.search(r"[\u0600-\u06ff]", text) or re.search(r"[A-Za-z؟?]", text):
+        return ""
+    if not re.match(r"^(?:جرّب|جرب|اختبر|قارن|لاحظ|راجع|اختر|اكتب|حدد|حدّد|اسأل|فكّر|فكر|تأمل|تأمّل|تتبّع|تتبع|ابحث|ناقش|طبّق|طبق|تحقق|تحقّق)\s", text):
+        return ""
+    if any(word in text for word in ("اسحب", "تابع الصفحة", "اضغط إعجاب", "شارك الفيديو")):
+        return ""
+    return text
+
+
+def resolve_v2_footer(analysis: dict[str, Any], metadata: dict[str, Any], summary: str, settings: Settings) -> str:
+    """Prefer the authored carousel-like footer; retain valid legacy questions."""
+    footer = normalize_footer(analysis.get("ending_text_ar"))
+    if footer:
+        return footer
+    # Do not reinterpret an old declarative conclusion as a user action.
+    return resolve_ending_question(analysis, metadata, summary, settings)

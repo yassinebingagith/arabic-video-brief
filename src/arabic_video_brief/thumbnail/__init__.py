@@ -69,6 +69,22 @@ def process_folder_thumbnails(
         except Exception:
             creative_plan = {}
 
+    # V1 passes its current analysis before manifest.json is written. Standalone
+    # thumbnail runs reuse saved copy; neither route needs another paid text call.
+    if isinstance(kwargs.get("creative_plan"), dict):
+        creative_plan.update(kwargs["creative_plan"])
+    summary_path = folder / "summary-ar.txt"
+    if summary_path.is_file() and not creative_plan.get("summary_ar"):
+        creative_plan["summary_ar"] = summary_path.read_text(encoding="utf-8").strip()
+    hook_path = folder / "thumbnail-hook-ar.txt"
+    if hook_path.is_file():
+        creative_plan["thumbnail_hook_ar"] = hook_path.read_text(encoding="utf-8").strip()
+    from .source_led import clean_thumbnail_hook
+    hook = clean_thumbnail_hook(creative_plan.get("thumbnail_hook_ar") or merged_manifest.get("thumbnail_hook_ar"))
+    if hook:
+        creative_plan["thumbnail_hook_ar"] = hook
+        hook_path.write_text(hook + "\n", encoding="utf-8")
+
     # Extract Arabic title
     if title_path.exists():
         post_title_ar = title_path.read_text(encoding="utf-8").strip()
@@ -92,6 +108,8 @@ def process_folder_thumbnails(
     if folder.name == "v2" and folder.parent.exists():
         ref_candidates.extend([
             folder.parent / "source_thumbnail.jpg",
+            folder.parent / "source_thumbnail.png",
+            folder.parent / "source_thumbnail.webp",
             folder.parent / "source.jpg",
             folder.parent / "source.webp",
             folder.parent / "source.png",
@@ -100,12 +118,7 @@ def process_folder_thumbnails(
     ref_thumbnail = next((p for p in ref_candidates if p.is_file()), None)
 
     target_ref = folder / "source_thumbnail.jpg"
-    if ref_thumbnail and ref_thumbnail != target_ref and not target_ref.exists():
-        try:
-            target_ref.write_bytes(ref_thumbnail.read_bytes())
-            ref_thumbnail = target_ref
-        except Exception:
-            pass
+    # Preserve the real reference format instead of relabelling PNG/WebP as JPEG.
 
     # If reference thumbnail is not found, automatically retrieve it
     if not ref_thumbnail or not ref_thumbnail.exists():
@@ -114,17 +127,6 @@ def process_folder_thumbnails(
             src = manifest_data.get("source", "")
             from ..utils import youtube_video_id
             vid_id = youtube_video_id(src) if src else None
-
-        if not vid_id:
-            import re
-            check_names = [folder.name]
-            if folder.name == "v2" and folder.parent.exists():
-                check_names.append(folder.parent.name)
-            for nm in check_names:
-                m = re.search(r"([a-zA-Z0-9_-]{11})$", nm)
-                if m:
-                    vid_id = m.group(1)
-                    break
 
         if vid_id:
             import urllib.request
@@ -191,16 +193,6 @@ def process_folder_thumbnails(
                 if not vid_id and (manifest_data or {}).get("source"):
                     from ..utils import youtube_video_id
                     vid_id = youtube_video_id(manifest_data["source"])
-                if not vid_id:
-                    import re
-                    check_names = [folder.name]
-                    if folder.name == "v2" and folder.parent.exists():
-                        check_names.append(folder.parent.name)
-                    for nm in check_names:
-                        m = re.search(r"([a-zA-Z0-9_-]{11})$", nm)
-                        if m:
-                            vid_id = m.group(1)
-                            break
                 if vid_id:
                     import urllib.request
                     for img_name in ("maxresdefault.jpg", "hqdefault.jpg"):
@@ -223,8 +215,9 @@ def process_folder_thumbnails(
                     reference_image_url=ref_image_url,
                 )
             except Exception as exc:
-                import logging
-                logging.getLogger(__name__).warning("KIE.ai generation failed: %s", exc)
+                raise RuntimeError(f"Thumbnail prompts saved, but KIE.ai image generation failed: {exc}") from exc
+        else:
+            raise RuntimeError("Thumbnail prompts saved, but KIE.ai image generation needs a configured API key.")
 
     return saved_prompts
 

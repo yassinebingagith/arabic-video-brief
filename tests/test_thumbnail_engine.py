@@ -78,7 +78,7 @@ def test_resolve_focal_archetype_dynamic_routing() -> None:
     assert arch_port == FocalArchetype.EMOTIVE_PORTRAIT
 
 
-def test_generate_thumbnail_package_4_0_no_conclusion_and_safe_margins() -> None:
+def test_generate_thumbnail_package_source_led_quality_and_safe_margins() -> None:
     title_ar = "تشتت عقلك إلى الأبد – دانيال بارادا"
 
     manifest_data = {
@@ -92,25 +92,27 @@ def test_generate_thumbnail_package_4_0_no_conclusion_and_safe_margins() -> None
     package = generate_thumbnail_package(
         post_title_ar=title_ar,
         manifest_data=manifest_data,
+        creative_plan={"thumbnail_hook_ar": "من يسرق انتباهك؟"},
     )
 
     # 4:5 Facebook checks
     assert "4:5 Aspect Ratio" in package.fb_master_prompt
     assert "تشتت عقلك إلى الأبد" in package.fb_master_prompt
-    assert "Signature Realism & Authenticity Mandate (Anti-AI-Slop Defense)" in package.fb_master_prompt
-    assert "Upper 20% Safe Zone" in package.fb_master_prompt
-    assert "NEVER spoil the conclusion" in package.fb_master_prompt
+    assert "natural pores" in package.fb_master_prompt
+    assert "80px side margins" in package.fb_master_prompt
+    assert "without misrepresenting the source" in package.fb_master_prompt
 
     # 9:16 Vertical cover checks (Cropping proofing)
     assert "9:16 Aspect Ratio" in package.vertical_master_prompt
-    assert "Mobile Feed Crop-Proof Safe Zones" in package.vertical_master_prompt
-    assert "Upper Safe Title Zone (Y: 320px to 560px)" in package.vertical_master_prompt
-    assert "Central Core Visual (Y: 580px to 1420px)" in package.vertical_master_prompt
-    assert "Bottom UI Clearance Zone (Y: 1450px to 1920px): STRICTLY 100% TEXT-FREE" in package.vertical_master_prompt
-    assert "Zero Bottom Clutter" in package.vertical_master_prompt
+    assert "title Y: 320px to 560px" in package.vertical_master_prompt
+    assert "core subject Y: 580px to 1420px" in package.vertical_master_prompt
+    assert "Bottom Y: 1450px to 1920px is strictly text-free" in package.vertical_master_prompt
+    assert "No secondary conclusion" in package.vertical_master_prompt
 
     # Power word extraction check
-    assert package.fb_text_specs["power_word_highlighted"] in ["تشتت", "الأبد", "عقلك"]
+    assert package.fb_text_specs["headline_arabic"] == "من يسرق انتباهك؟"
+    assert package.video_title_ar == title_ar
+    assert package.visual_style.id == "source_led"
 
 
 def test_process_folder_thumbnails_creates_files_without_conclusion(tmp_path: Path) -> None:
@@ -136,8 +138,8 @@ def test_process_folder_thumbnails_creates_files_without_conclusion(tmp_path: Pa
     assert "Bottom Badge: None" in fb_text
 
     vert_text = vert_file.read_text(encoding="utf-8")
-    assert "Title Safe Zone: Upper crop-safe window (Y: 320px to 560px)" in vert_text
-    assert "Bottom Clearance Zone: Bottom 25%" in vert_text
+    assert "Title Safe Zone: Y: 320px to 560px" in vert_text
+    assert "Bottom Clearance Zone: Y: 1450px to 1920px text-free" in vert_text
 
 
 def test_image_client_checks_existing_covers(tmp_path: Path) -> None:
@@ -174,7 +176,7 @@ def test_cli_thumbnail_command(tmp_path: Path) -> None:
     assert (tmp_path / "thumbnail_prompt_vertical_9x16.txt").is_file()
 
     fb_content = (tmp_path / "thumbnail_prompt_facebook_4x5.txt").read_text(encoding="utf-8")
-    assert "Symbolic Artifact" in fb_content
+    assert "Explicit requested composition: artifact" in fb_content
 
 
 def test_format_dual_tone_title_ignores_numbers_and_particles() -> None:
@@ -239,14 +241,14 @@ def test_prompt_cleanliness_zero_stickers() -> None:
         },
     )
 
-    # Verify zero cartoon sticker decals
-    assert "STRICTLY NO FLOATING STICKERS" in package.fb_master_prompt
-    assert "STRICTLY NO FLOATING STICKERS" in package.vertical_master_prompt
+    # Preserve quality without banning legitimate source art styles.
+    assert "unsolicited badges" in package.fb_master_prompt
+    assert "No secondary conclusion" in package.vertical_master_prompt
     assert "فخ التفكير؟" not in package.fb_master_prompt
     assert "قبل النوم فقط؟" not in package.fb_master_prompt
 
     # Verify natural environmental clue
-    assert "smartphone" in package.fb_master_prompt or "screen" in package.fb_master_prompt
+    assert "Smartphones" in package.fb_master_prompt
     assert "amber apothecary" not in package.fb_master_prompt
 
 
@@ -274,15 +276,13 @@ def test_foreground_background_depth_layering() -> None:
             }
         },
     )
-    assert "Foreground Contextual Layer" in package.fb_master_prompt
-    assert "Background Environmental Horizon" in package.fb_master_prompt
-    assert "Foreground Contextual Layer" in package.vertical_master_prompt
-    assert "Background Environmental Horizon" in package.vertical_master_prompt
-    assert "Foreground Context:" in package.fb_strategy_summary
-    assert "Background Context:" in package.fb_strategy_summary
+    assert "sculptural facial depth" in package.fb_master_prompt
+    assert "Light direction, contact shadows and materials" in package.vertical_master_prompt
+    assert "not as three mandatory props" in package.vertical_master_prompt
+    assert "A face is optional" in package.fb_master_prompt
 
 
-def test_real_person_interview_photographic_priority_and_classical_gallery() -> None:
+def test_active_pipeline_does_not_infer_source_medium_from_interview_keywords() -> None:
     from arabic_video_brief.thumbnail.prompt_engine import detect_source_modality, generate_thumbnail_package
 
     # 1. Jonathan Rauch Full Interview on Political Philosophy
@@ -303,9 +303,7 @@ def test_real_person_interview_photographic_priority_and_classical_gallery() -> 
             }
         },
     )
-    assert package.source_modality == "photographic"
-    assert "Signature Realism & Authenticity Mandate" in package.vertical_master_prompt
-    assert "cyclorama box" not in package.vertical_master_prompt
-    assert "stark white" not in package.vertical_master_prompt
-    assert "classical Enlightenment" in package.vertical_master_prompt
-    assert "dark, atmospheric" in package.vertical_master_prompt
+    assert package.source_modality == "unverified_no_reference"
+    assert "No original thumbnail is available" in package.vertical_master_prompt
+    assert "classical Enlightenment" not in package.vertical_master_prompt
+    assert "Bright backgrounds" in package.vertical_master_prompt

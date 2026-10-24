@@ -64,6 +64,9 @@ def word_count(text: str) -> int:
 
 
 def split_summary(text: str, page_min_words: int = 70, page_max_words: int = 80) -> tuple[str, str]:
+    paragraphs = [" ".join(p.split()) for p in text.splitlines() if p.strip()]
+    if len(paragraphs) == 2 and all(page_min_words <= word_count(p) <= page_max_words for p in paragraphs):
+        return paragraphs[0], paragraphs[1]
     clean = re.sub(r"\s+", " ", text).strip()
     if not clean:
         raise ValueError("Arabic summary is empty")
