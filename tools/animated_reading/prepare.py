@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from PIL import Image, ImageDraw, ImageFont
 from arabic_video_brief.config import Settings
+from arabic_video_brief.render_runtime import load_render_runtime
 from arabic_video_brief.media import (
     _balance_wrap, _display_text, create_v2_summary_background,
     infer_category, wrap_v2_text_with_highlights,
@@ -36,6 +37,7 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--reference-video", type=Path, help="Reuse a previously copied local reference.")
     args = ap.parse_args()
+    runtime = load_render_runtime()
     source = args.source.resolve()
     out = args.out.resolve()
     if out.exists() and any(out.iterdir()):
@@ -62,11 +64,12 @@ def main():
 
     def svg_text(text, x, y, size, weight=700, fill="#F8FAFC", anchor="start", cls="", ident="", mask=""):
         width = draw.textlength(_display_text(text), font=font(size, weight))
+        mask_attribute = f'mask="url(#{mask})"' if mask else ""
         return (f'<text id="{ident}" class="{cls}" x="{x:.4f}" y="{y:.4f}" '
                 f'direction="rtl" text-anchor="{anchor}" xml:space="preserve" '
                 f'textLength="{width:.4f}" lengthAdjust="spacingAndGlyphs" '
                 f'font-size="{size}" font-weight="{weight}" fill="{fill}" '
-                f'{f"mask=\"url(#{mask})\"" if mask else ""}>'
+                f'{mask_attribute}>'
                 f'{html.escape(text)}</text>')
 
     for i, page in enumerate(pages):
@@ -188,7 +191,7 @@ def main():
     create_v2_summary_background().save(project / "background.png")
     shutil.copy2(Settings().font_path, project / "Arabic.ttf")
     shutil.copy2(Settings().brand_frame_path, project / "frame.png")
-    shutil.copy2(Path("F:/hyperframes-v3/renderers/hyperframes/node_modules/gsap/dist/gsap.min.js"), project / "gsap.min.js")
+    shutil.copy2(runtime["GSAP_JS"], project / "gsap.min.js")
     for name in ("motion.js",):
         shutil.copy2(Path(__file__).parent / name, project / name)
     data = {"version": "v2", "duration": bounds[-1], "total_duration": Settings().duration_v2, "ending_duration": Settings().conclusion_duration, "fps": 30,

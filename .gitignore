@@ -16,6 +16,8 @@ browser_profile/
 env/
 venv/
 ENV/
+node_modules/
+.runtime/
 
 # 4. Generated Video Outputs & Large Media
 outputs/

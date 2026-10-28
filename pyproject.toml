@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 vision = ["opencv-python-headless>=4.11.0"]
+whiteboard = ["numpy>=2.0.0", "opencv-python-headless>=4.11.0"]
 test = ["pytest>=8.3.0", "PyYAML>=6.0.2"]
 publisher = ["playwright>=1.40.0"]
 

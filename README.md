@@ -28,23 +28,38 @@ An automated production and multi-platform publishing engine for creating V1 (38
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
-- Python 3.10+
-- FFmpeg (can be installed locally or placed in `bin/ffmpeg.exe`)
-- Google Chrome (for automated publishing)
+- Python **3.11+** and Node.js **22+** (including npm), available on `PATH`.
+- Windows, macOS or Linux on an architecture supported by Chrome for Testing and the bundled FFmpeg packages. Linux also needs Chromium's normal system libraries; minimal containers may need these installed by their administrator.
+- Internet access for the first dependency/browser download.
+
+Setup automatically installs the Python whiteboard dependencies, **Hyperframes 0.8.30**, **GSAP 3.12.5**, the rendering browser, FFmpeg and FFprobe. JavaScript dependencies and their transitive versions are recorded in `package-lock.json`. The browser build is pinned in `package.json`. It does not use another project or a Codex runtime.
 
 ### 2. Clone & Install Dependencies
 ```powershell
-git clone https://github.com/<your-username>/arabic-video-brief.git
+git clone https://github.com/yassinebingagith/arabic-video-brief.git
 cd arabic-video-brief
 
-# Create and activate virtual environment
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+# Windows: creates .venv and installs Python + rendering dependencies
+python scripts/setup.py
 
-# Install requirements
-pip install -e .
-playwright install chromium
+# macOS/Linux: same setup using your Python 3 executable
+python3 scripts/setup.py
 ```
+
+Run the command for your platform once. Windows users can alternatively run `./scripts/setup.ps1`; `-PythonPath` accepts a specific Python executable. Setup creates `.env` from the example only when it does not already exist. API keys are not needed to install or render local whiteboard pages.
+
+Activate `.venv` with `.venv\Scripts\Activate.ps1` on Windows or `source .venv/bin/activate` on macOS/Linux. To install optional publishing automation, run `python scripts/setup.py --with-publisher` (or `python3`); this also installs Playwright's publishing browser. Add `--with-tests` for the test dependencies.
+
+For an existing checkout, `npm ci` installs the pinned JavaScript dependencies and automatically runs browser/runtime setup. `pip install -e '.[whiteboard]'` installs the Python whiteboard dependencies. The generated `.runtime/` configuration and downloaded dependencies stay local and are ignored by Git. After moving a checkout, run `npm run setup:renderer` to refresh its paths. Explicit `CHROME_BIN`, `FFMPEG_BIN` and `FFPROBE_BIN` overrides support managed installations; unset old overrides before a standard setup.
+
+Check the installation and render a short synthetic example without API keys:
+
+```powershell
+npm run doctor:renderer
+python scripts/smoke_whiteboard.py
+```
+
+These commands assume the virtual environment is active. On macOS/Linux use `python3` if your environment does not provide `python`. See [the whiteboard workflow](tools/animated_reading/README.md) for preparing, rendering, composing and verifying an episode. Whiteboard rendering currently has its own workflow; the regular V1/V2 CLI is not automatically switched to it. GitHub Actions contains Windows/macOS/Linux setup and rendering smoke checks.
 
 ### 3. Configure Environment Variables
 Copy the `.env.example` template to `.env`:

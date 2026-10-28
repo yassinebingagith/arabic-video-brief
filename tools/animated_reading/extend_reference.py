@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 from arabic_video_brief.config import Settings
+from arabic_video_brief.render_runtime import load_render_runtime
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--episode", type=Path, required=True)
@@ -24,7 +25,7 @@ output = args.output.resolve()
 if output.exists():
     raise ValueError("Preserve existing references; choose a new output path.")
 output.parent.mkdir(parents=True, exist_ok=True)
-runtime = json.loads(Path("F:/hyperframes-v3/config/local-runtime.json").read_text())
+runtime = load_render_runtime()
 manifest = json.loads((args.episode / "manifest.json").read_text(encoding="utf-8-sig"))
 settings = Settings()
 old_total = float(manifest["render"]["duration"])

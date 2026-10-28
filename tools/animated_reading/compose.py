@@ -2,14 +2,18 @@
 import argparse
 import json
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from arabic_video_brief.render_runtime import load_render_runtime
 
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--folder", type=Path, required=True)
 args = ap.parse_args()
 folder = args.folder.resolve()
 data = json.loads((folder / "Project/page-data.json").read_text(encoding="utf-8"))
-runtime = json.loads(Path("F:/hyperframes-v3/config/local-runtime.json").read_text())
+runtime = load_render_runtime()
 duration = data.get("total_duration", data["duration"] + 8)
 probe = json.loads(subprocess.check_output([runtime["FFPROBE_BIN"], "-v", "error", "-show_entries", "format=duration", "-of", "json", str(folder / "Source/reference.mp4")]))
 if abs(float(probe["format"]["duration"])-duration)>.05:

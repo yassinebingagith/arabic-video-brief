@@ -4,7 +4,11 @@ import hashlib
 import io
 import json
 import subprocess
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+from arabic_video_brief.render_runtime import load_render_runtime
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -13,7 +17,7 @@ ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument("--folder", type=Path, required=True)
 args = ap.parse_args()
 folder = args.folder.resolve()
-runtime = json.loads(Path("F:/hyperframes-v3/config/local-runtime.json").read_text())
+runtime = load_render_runtime()
 ffmpeg, ffprobe = runtime["FFMPEG_BIN"], runtime["FFPROBE_BIN"]
 preview, source = folder / "Preview.mp4", folder / "Source/reference.mp4"
 data = json.loads((folder / "Project/page-data.json").read_text(encoding="utf-8"))

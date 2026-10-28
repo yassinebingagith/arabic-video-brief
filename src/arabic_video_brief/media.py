@@ -30,6 +30,10 @@ def find_ffmpeg() -> str:
     bundled = Path(__file__).resolve().parents[2] / "bin" / "ffmpeg.exe"
     if bundled.exists():
         return str(bundled)
+    runtime_file = Path(__file__).resolve().parents[2] / ".runtime" / "render-runtime.json"
+    if runtime_file.is_file():
+        from .render_runtime import load_render_runtime
+        return load_render_runtime()["FFMPEG_BIN"]
     system = shutil.which("ffmpeg")
     if system:
         return system
