@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1080,height=1140">
+<title>كبسولة فكر — صفحات قراءة متحركة</title>
+<script src="gsap.min.js"></script>
+<style>
+@font-face{font-family:Arabic;src:url('Arabic.ttf');font-weight:100 900;font-stretch:62% 100%;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1080px;height:1140px;overflow:hidden;background:#000}
+#root{position:relative;width:1080px;height:1140px;overflow:hidden;direction:ltr}
+#inner{position:absolute;left:54px;top:-684px;width:1080px;height:1920px;transform:scale(.9);transform-origin:top left;background:url('background.png') 0 0/1080px 1920px}
+.page{position:absolute;inset:0;visibility:hidden;opacity:0}
+.line{position:absolute;left:0;width:1080px}
+svg{display:block;overflow:visible;font-family:Arabic,sans-serif;font-kerning:normal}
+svg text{white-space:pre}
+.header{position:absolute;inset:0;pointer-events:none}
+.marker{clip-path:inset(0 0 0 100% round 10px)}
+.write-stroke{stroke-dasharray:1;stroke-dashoffset:1}
+.write-complete{opacity:0}
+#frame{position:absolute;left:0;top:-780px;width:1080px;height:1920px;pointer-events:none}
+</style></head><body>
+<main id="root" data-composition-id="main" data-start="0" data-duration="34.2" data-width="1080" data-height="1140" data-fps="30">
+<div id="inner">__PAGES__</div><img id="frame" src="frame.png" alt="">
+</main>
+<script>
+window.pageData=__DATA__;
+__MOTION__
+</script>
+</body></html>
