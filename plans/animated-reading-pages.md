@@ -1,6 +1,14 @@
 # Animated reading pages — V1 and V2
 
-Interview decisions recorded 2026-10-28. A separate V2 comparison has now been implemented and rendered. Production defaults and the V1 renderer have not been switched.
+Interview decisions recorded 2026-10-28. Separate V2 whiteboard comparisons have been implemented and rendered. Production V2 timing has been extended; production whiteboard integration and the V1 renderer remain separate.
+
+## Latest timing decision — two more seconds per V2 reading page
+
+The user chose to preserve the full text and extend each of the four reading pages and its writing animation by two seconds. The current V2 schedule is page 1: 0–12.8; page 2: 12.8–22.6; page 3: 22.6–32.4; page 4: 32.4–42.2; ending: 42.2–50.2 seconds. Writing lasts approximately 11.5 seconds on page 1 and 8.83 seconds on later pages. The measured animation extension is within one frame of two seconds per page, with text unchanged.
+
+V2 configuration, CLI labels, renderer timing expectations and mirrored skill specifications now use the 50.2-second schedule. V1 is unchanged. Production whiteboard integration remains separate from this page-preview builder.
+
+Extended preview: `F:/Arabic Brief/work/animated-reading/pollan-v2-whiteboard-plus2-r1/Preview.mp4`. Its reference remixes the same music and saved hook to the new reading window, shifts the original eight-second outro, and slightly slows the example's middle top-video footage. New production episodes can extract longer source footage at normal speed. Earlier previews remain preserved; subsequent sections record their historical timing.
 
 ## Current revision — supersedes the initial line-reveal treatment below
 

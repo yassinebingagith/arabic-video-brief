@@ -1,6 +1,6 @@
 # Arabic Video Brief Automation (موجز الفيديو العربي)
 
-An automated production and multi-platform publishing engine for creating V1 (38-second) and V2 (42.2-second) vertical (9:16) video briefs with Modern Standard Arabic summaries, deep instrumental soundtrack, and automatic publishing to **YouTube Shorts**, **TikTok**, and **Meta / Instagram Reels**.
+An automated production and multi-platform publishing engine for creating V1 (38-second) and V2 (50.2-second) vertical (9:16) video briefs with Modern Standard Arabic summaries, deep instrumental soundtrack, and automatic publishing to **YouTube Shorts**, **TikTok**, and **Meta / Instagram Reels**.
 
 ---
 
@@ -9,7 +9,7 @@ An automated production and multi-platform publishing engine for creating V1 (38
 - **Automated Video Synthesis:** Downloads source clips, generates concrete explanatory Modern Standard Arabic copy (140–160 words, split across two 15-second cards in V1), and compiles 1080×1920 60/30fps vertical MP4s.
 - **Dynamic On-Screen Layout:**
   - 2.5-second source metadata card with title, channel, and category.
-  - 27.5-second V1 / 31.7-second V2 live video segment with subtle darkening and audio ducking.
+  - 27.5-second V1 / 39.7-second V2 live video segment with subtle darkening and audio ducking.
   - **Left-Shift Safe Zone (6% / ~65px):** Arabic text is offset to prevent right-side social platform buttons (Like, Comment, Share) from obscuring text.
   - Bottom 15% platform UI safe zone.
 - **Multimodal LLM Support:**
@@ -82,17 +82,17 @@ python scripts/avbrief.py search --query "neuroscience habits" --mode popular --
 
 Resolve the video version, analysis engine, deep-dive choice, and thumbnail choice with the user before starting, including when V3 is also requested. Non-interactive runs require explicit `--version`, `--deepdive` or `--no-deepdive`, and `--thumbnails none|manual|kieai`. Missing choices return `SETUP_REQUIRED`; default flags must not substitute for user answers. The examples below assume the user chose no deep dive and manual thumbnail prompts.
 
-Support for both **V1 (two 15s pages + 8s question ending = 38s)** and **V2 (title hook + four pages + action/question ending = 42.2s)**:
+Support for both **V1 (two 15s pages + 8s question ending = 38s)** and **V2 (title hook + four pages + action/question ending = 50.2s)**:
 
 #V1/V2 writing follows [the explanatory editorial guide](references/v1-v2-editorial-style.md). Video thumbnails preserve the original source medium and use episode-specific hybrid compositions with separate short Arabic hooks; full post titles and narration remain faithful translations. V3 is independent and unchanged.
 
-### V2 Pipeline (42.2-second format):
+### V2 Pipeline (50.2-second format):
 Features the translated title hook with optional ElevenLabs TTS, 4 authored explanatory pages, and a dedicated full-page action/question ending with Capsule Fikr branding:
 ```powershell
 python scripts/avbrief.py run --source "https://www.youtube.com/watch?v=..." --version v2 --provider vyceai --no-deepdive --thumbnails manual
 ```
 Outputs are isolated under `outputs/<video-slug>/v2/`:
-- `CapCut_1080p_*.mp4` (42.2-second 1080×1920 MP4)
+- `CapCut_1080p_*.mp4` (50.2-second 1080×1920 MP4)
 - `summary-ar.txt` (Complete 140–160 word Arabic summary)
 - `summary-pages.json` (Four rendered pages with sentence alignment and counters `١/٤` to `٤/٤`)
 - `hook-ar.txt` & `hook-tts.txt` (Selected hook text & TTS normalized text)

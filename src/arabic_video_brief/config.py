@@ -59,11 +59,11 @@ class Settings:
     music_fade_in: float = 1.0
     music_fade_out: float = 2.0
 
-    # V2 reading pages receive 20% more time; the opening card overlaps page 1.
-    duration_v2: float = 42.2
+    # V2 adds two seconds per reading page for whiteboard writing; opening overlaps page 1.
+    duration_v2: float = 50.2
     hook_duration: float = 2.5
-    first_page_duration_v2: float = 10.8
-    page_duration_v2: float = 7.8
+    first_page_duration_v2: float = 12.8
+    page_duration_v2: float = 9.8
     conclusion_duration: float = 8.0
     page_v2_min_words: int = 30
     page_v2_max_words: int = 44

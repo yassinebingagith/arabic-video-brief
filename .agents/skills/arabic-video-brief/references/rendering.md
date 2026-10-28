@@ -19,11 +19,11 @@ The engine renders 1080x1920 (9:16 vertical MP4) high-definition video briefs in
    - Dedicated outro voiceover (`last voicever.mp3`) during 30s-38s question and CTA page.
    - See detailed spec: [references/v1-render-spec.md](v1-render-spec.md).
 
-2. **Version 2 Extended Format (42.2 Seconds - Recommended):**
-   - 2.5s source card + 31.7s video stream (across 4 summary pages, 30-44 words each) + 8.0s question and CTA screen.
+2. **Version 2 Extended Format (50.2 Seconds - Recommended):**
+   - 2.5s source card + 39.7s video stream (across 4 summary pages, 30-44 words each) + 8.0s question and CTA screen.
    - ElevenLabs TTS Arabic voiceover at `t=0s` (`volume=1.3`).
-   - Background music (randomly choose `naruto_sadness_and_sorrow.mp3` or `godfather_0013.mp3` per render) ducked to `0.12` during speech, swelling to `0.70`, fading at 32.2s-34.2s.
-   - Dedicated outro voiceover (`last voicever.mp3`) at `t=34.2s` (`volume=1.1`).
+   - Background music (randomly choose `naruto_sadness_and_sorrow.mp3` or `godfather_0013.mp3` per render) ducked to `0.12` during speech, swelling to `0.70`, fading at 40.2s-42.2s.
+   - Dedicated outro voiceover (`last voicever.mp3`) at `t=42.2s` (`volume=1.1`).
    - `normalize=0` on FFmpeg `amix` to ensure crystal-clear vocal volume.
    - See detailed spec: [references/v2-render-spec.md](v2-render-spec.md).
 

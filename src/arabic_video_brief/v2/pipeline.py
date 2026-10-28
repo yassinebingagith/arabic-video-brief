@@ -37,7 +37,7 @@ def process_source_v2(
     generate_deepdive: bool = False,
 ) -> dict[str, Any]:
     """
-    Processes a source into a V2 Arabic Video Brief (26.0s timeline):
+    Processes a source into a V2 Arabic Video Brief (50.2s timeline):
     - Dedicated hook with optional ElevenLabs TTS narration (graceful fallback)
     - 4 sentence-aligned summary pages (35-40 words each)
     - Full-page conclusion & CTA with Capsule Fikr branding
@@ -166,10 +166,10 @@ def process_source_v2(
 
         has_hook_audio = (tts_result.get("status") == "success" and hook_audio_path.exists())
 
-        # Stage 4: Video Render (42.2 seconds)
+        # Stage 4: Video Render (50.2 seconds)
         selected_clip = {
             "start_seconds": 0.0,
-            "end_seconds": min(settings.v2_page_boundaries[-1] - settings.hook_duration, float(metadata.get("duration") or 31.7)),
+            "end_seconds": min(settings.v2_page_boundaries[-1] - settings.hook_duration, float(metadata.get("duration") or 39.7)),
             "reason": "Top panel video stream playback",
         }
 

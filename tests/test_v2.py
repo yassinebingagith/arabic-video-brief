@@ -118,14 +118,14 @@ def test_v2_render_integration(tmp_path: Path):
     assert info.height == 1920
     assert abs(info.duration - settings.duration_v2) < 0.2
     assert render_details["timeline"] == {
-        "page_1": "0:00.0-0:10.8", "page_2": "0:10.8-0:18.6",
-        "page_3": "0:18.6-0:26.4", "page_4": "0:26.4-0:34.2",
-        "conclusion": "0:34.2-0:42.2",
+        "page_1": "0:00.0-0:12.8", "page_2": "0:12.8-0:22.6",
+        "page_3": "0:22.6-0:32.4", "page_4": "0:32.4-0:42.2",
+        "conclusion": "0:42.2-0:50.2",
     }
 
     # Both the retained short track and the new track must cover the longer reading section.
     import array
-    audio = subprocess.run([ffmpeg, "-loglevel", "error", "-ss", "30", "-i", str(output_video),
+    audio = subprocess.run([ffmpeg, "-loglevel", "error", "-ss", "38", "-i", str(output_video),
                             "-t", "2", "-vn", "-ac", "1", "-ar", "8000", "-f", "f32le", "-"],
                            check=True, capture_output=True).stdout
     samples = array.array("f", audio)
@@ -159,7 +159,8 @@ def test_v2_timing_and_voiceover_preserve_reading_content():
     from arabic_video_brief.v2.editorial import build_v2_editorial_package, VOICEOVER_SUFFIX
     settings = Settings()
     bounds = settings.v2_page_boundaries
-    assert [bounds[i+1]-bounds[i] for i in range(4)] == pytest.approx([9*1.2, 6.5*1.2, 6.5*1.2, 6.5*1.2])
+    assert [bounds[i+1]-bounds[i] for i in range(4)] == pytest.approx([10.8+2, 7.8+2, 7.8+2, 7.8+2])
+    assert bounds[-1] + settings.conclusion_duration == pytest.approx(50.2)
     pages = ["مثال عربي مع الرقم 21."] * 4
     result = build_v2_editorial_package({"post_title_ar": "عنوان الاختبار", "pages": pages,
         "ending_question_ar": "أي فكرة ستجرب تطبيقها في حياتك اليوم؟",

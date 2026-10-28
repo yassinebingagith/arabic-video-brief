@@ -359,7 +359,7 @@ def render_v2_conclusion_page(
     settings: Settings,
 ) -> None:
     """
-    Renders the question & CTA ending (1080x1920) for 0:34.2-0:42.2.
+    Renders the question & CTA ending (1080x1920) for 0:42.2-0:50.2.
     The top 760px retains the static source card (matching user instruction).
     The lower panel displays the topic-specific question (Gold words), contextual save CTA,
     description CTA, and a larger Capsule Fikr logo at the bottom.
@@ -583,7 +583,7 @@ def render_v2_video(
     hook_audio_path: Path | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Render V2 with 10.8/7.8/7.8/7.8-second reading pages and an 8s ending."""
+    """Render V2 with 12.8/9.8/9.8/9.8-second reading pages and an 8s ending."""
     ffmpeg = find_ffmpeg()
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -608,10 +608,10 @@ def render_v2_video(
         top_overlay = temp / "top-overlay.png"
         render_top_overlay(metadata or {}, top_overlay, settings)
 
-        # 3. Render Top Panel MP4 (Exact 42.2s duration)
+        # 3. Render Top Panel MP4 (Exact 50.2s duration)
         # 0:00 to 0:02.5 (2.5s): Kinetic Ken Burns zoom on source_card + floating overlay
-        # 0:02.5 to 0:34.2 (31.7s): Full 1080x760 video stream with floating overlay & seamless gradient blend
-        # 0:34.2 to 0:42.2 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
+        # 0:02.5 to 0:42.2 (39.7s): Full 1080x760 video stream with floating overlay & seamless gradient blend
+        # 0:42.2 to 0:50.2 (8.0s): Kinetic Ken Burns zoom on CTA card + floating overlay
         top_path = temp / "top_v2.mp4"
         open_dur = settings.hook_duration
         v_stream_dur = reading_end - open_dur
@@ -721,8 +721,8 @@ def render_v2_video(
 
         # Audio configuration:
         # Hook voiceover starts at t=0.
-        # Music track plays with ducking during hook narration, then fades out before 34.2s.
-        # Outro voiceover starts at t=34.2s during the 8.0s conclusion/CTA page.
+        # Music track plays with ducking during hook narration, then fades out before 42.2s.
+        # Outro voiceover starts at t=42.2s during the 8.0s conclusion/CTA page.
         has_hook_audio = bool(hook_audio_path and hook_audio_path.exists())
         outro_voice = settings.outro_voiceover_path
         has_outro = bool(outro_voice and outro_voice.exists())

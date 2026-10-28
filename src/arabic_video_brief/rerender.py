@@ -63,7 +63,7 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
         output_video_path = folder / "brief.mp4"
 
         if is_v2:
-            print("[Rerender] Re-rendering V2 format (42.2s with 8s question ending and outro voiceover)...")
+            print("[Rerender] Re-rendering V2 format (50.2s with 8s question ending and outro voiceover)...")
             from .v2.editorial import V2EditorialPackage, HookCandidate
             from .v2.renderer import render_v2_video
 

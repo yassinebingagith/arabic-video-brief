@@ -47,6 +47,8 @@ def main():
     if len(videos) != 1:
         raise ValueError("The reference folder must contain exactly one MP4.")
     shutil.copy2(args.reference_video or videos[0], out / "Source" / "reference.mp4")
+    if args.reference_video and args.reference_video.with_suffix(".json").is_file():
+        shutil.copy2(args.reference_video.with_suffix(".json"), out / "reference-adjustments.json")
     pages = json.loads((source / "summary-pages.json").read_text(encoding="utf-8-sig"))
     manifest = json.loads((source / "manifest.json").read_text(encoding="utf-8-sig"))
     if len(pages) != 4 or manifest.get("render", {}).get("version") != "v2":
@@ -189,13 +191,14 @@ def main():
     shutil.copy2(Path("F:/hyperframes-v3/renderers/hyperframes/node_modules/gsap/dist/gsap.min.js"), project / "gsap.min.js")
     for name in ("motion.js",):
         shutil.copy2(Path(__file__).parent / name, project / name)
-    data = {"version": "v2", "duration": bounds[-1], "fps": 30,
+    data = {"version": "v2", "duration": bounds[-1], "total_duration": Settings().duration_v2, "ending_duration": Settings().conclusion_duration, "fps": 30,
             "canvas": [1080, 1920], "page_crop": [0, 780, 1080, 1140],
             "inner_scale": .9, "inner_origin": [54, 96], "pages": page_data,
             "reference_folder": str(source), "reference_video": videos[0].name,
             "motion_style": "font-guided-whiteboard-writing", "outgoing_fade_seconds": .18}
     template = (Path(__file__).parent / "template.html").read_text(encoding="utf-8")
     template = template.replace("__PAGES__", "".join(markup)).replace("__DATA__", json.dumps(data, ensure_ascii=False))
+    template = template.replace("__DURATION__", str(bounds[-1]))
     template = template.replace("__MOTION__", (Path(__file__).parent / "motion.js").read_text(encoding="utf-8"))
     (project / "index.html").write_text(template, encoding="utf-8")
     (project / "page-data.json").write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -203,7 +206,7 @@ def main():
     (out / "README.md").write_text(
         "# V2 animated reading comparison\n\n"
         "Project/index.html, motion.js and page-data.json contain the editable page composition. "
-        "The 1080×1140 rendered component replaces only y=780–1920 during 0–34.2 seconds. "
+        f"The 1080×1140 rendered component replaces only y=780–1920 during 0–{bounds[-1]} seconds. "
         "The source top panel and original AAC audio are reused; the ending uses the source picture. "
         "Source/reference.mp4 is an unchanged local reference copy.\n\n"
         "This is a visual comparison using existing supplied copy. No new factual review or publication is implied.\n",

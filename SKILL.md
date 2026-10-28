@@ -1,6 +1,6 @@
 ---
 name: arabic-video-brief
-description: Process or discover YouTube sources for Arabic content. V1 creates a 38-second two-page video brief; V2 creates a 42.2-second four-page brief. V3 prepares Instagram carousel and Facebook photo packs with source-thumbnail references, Arabic copy, captions, and a choice of API, ChatGPT/MCP, or manual image generation. Supports new links, existing transcripts, and combined video plus image packs.
+description: Process or discover YouTube sources for Arabic content. V1 creates a 38-second two-page video brief; V2 creates a 50.2-second four-page brief. V3 prepares Instagram carousel and Facebook photo packs with source-thumbnail references, Arabic copy, captions, and a choice of API, ChatGPT/MCP, or manual image generation. Supports new links, existing transcripts, and combined video plus image packs.
 ---
 
 # Arabic Video Brief
@@ -49,11 +49,11 @@ Honor links, source folders, and mode choices already supplied. If the intended 
 Use the same skill name, `$arabic-video-brief`, with the requested mode:
 
 1. **V1 — Two-Page Video (38s):** Two 15-second reading pages on a deep black-and-navy radial glow canvas with bold 700 white typography and warm gold book-highlighted pills (<hl>...</hl>), followed by an 8-second question ending (strictly no duplicate description CTA footer). See [references/v1-render-spec.md](references/v1-render-spec.md).
-2. **V2 — Four-Page Video (42.2s):** Existing title hook and four-page pacing on a deep black-and-navy radial glow canvas with bold 700 white typography and warm gold book-highlighted pills (<hl>...</hl>), followed by an 8-second question ending. See [references/v2-render-spec.md](references/v2-render-spec.md).
+2. **V2 — Four-Page Video (50.2s):** Existing title hook and four-page pacing on a deep black-and-navy radial glow canvas with bold 700 white typography and warm gold book-highlighted pills (<hl>...</hl>), followed by an 8-second question ending. See [references/v2-render-spec.md](references/v2-render-spec.md).
 3. **V3 — Instagram Carousel + Facebook Photo Pack:** One 4–6-slide Instagram carousel and one separate Facebook photo concept per source, with standalone prompts, reference instructions, Arabic captions, and a generation plan. After preparing the entire pack, ask whether to generate via a configured image API, in one persistent ChatGPT/MCP generation session, or to stop for manual generation. Follow [references/v3-carousel-pack.md](references/v3-carousel-pack.md).
 
 **Routing rules:**
-- For an ambiguous video request such as “Process this video,” ask **“V1 (38s) or V2 (42.2s)?”** before running the video pipeline. Never silently choose the CLI default. An explicit version or an established choice for this batch satisfies the gate.
+- For an ambiguous video request such as “Process this video,” ask **“V1 (38s) or V2 (50.2s)?”** before running the video pipeline. Never silently choose the CLI default. An explicit version or an established choice for this batch satisfies the gate.
 - “V3”, “do carousel”, “launch carousel”, or “carousel and photo pack” selects V3. If sources are unspecified, ask **“Which YouTube links or existing video folders should I use for the carousel and Facebook photo packs?”** List identifiable existing candidates when useful; do not process every old video automatically.
 - If the user requests video plus V3, ask V1/V2 only if unknown. If the V3 subset is unclear, ask which selected videos also need packs. Reuse the matching source transcript; do not transcribe again unnecessarily.
 - V3 alone bypasses the video-only engine, deep-dive, and thumbnail gates below. Its prompts and references are always included. Do not call the existing thumbnail generator or renderer for V3.
@@ -170,12 +170,12 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
     - Bottom gold badge: `السر الأهم والخطوات التطبيقية في الوصف بالأسفل` with downward chevron.
     - Outro narration bridge playing clearly.
 
-### 2b. Video Render Layout (42.2 Seconds - Version 2 Extended Format)
+### 2b. Video Render Layout (50.2 Seconds - Version 2 Extended Format)
 
 - **Top Panel (1080×760):**
   - `0:00 - 0:02.5`: Source Card with kinetic Ken Burns push-in zoom and floating translucent metadata badge.
-  - `0:02.5 - 0:34.2`: Highlighted Video Segment (31.7 seconds extracted from the source clip with seamless bottom gradient blend and floating metadata badge). Zero hard borders.
-  - `0:34.2 - 0:42.2`: Dynamic thumbnail card with subtle Ken Burns push-in zoom during the final 8.0s conclusion & CTA page.
+  - `0:02.5 - 0:42.2`: Highlighted Video Segment (39.7 seconds extracted from the source clip with seamless bottom gradient blend and floating metadata badge). Zero hard borders.
+  - `0:42.2 - 0:50.2`: Dynamic thumbnail card with subtle Ken Burns push-in zoom during the final 8.0s conclusion & CTA page.
   - **Floating Glassmorphic Metadata Badge (1016×176px at y=556, r=26px):**
     - **RTL / BiDi Awareness:** For Arabic content, layout is strictly Right-to-Left (red YouTube icon on right, right-aligned title, RTL metadata order). For English content, layout is Left-to-Right.
     - **Multi-line Title:** Full video title wraps cleanly without truncation.
@@ -188,11 +188,11 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
     - Highlighted phrases (<hl>...</hl>): 2 to 3 key phrases per card (each 2–3 words long) wrapped in `<hl>...</hl>` tags, rendered in Warm Gold (#FFD700), Bold (750–800), with a translucent warm gold rounded pill box behind the phrase (`background: rgba(255, 215, 0, 0.14); border-radius: 10px; padding: 2px 10px 4px 10px;`).
     - No-Wrap Rule: spaces inside `<hl>...</hl>` replaced with non-breaking spaces (\u00A0) so highlighted phrases never split across two lines. Attached single-letter Arabic prefixes (و, ف, ب, ل, ك) stay INSIDE the `<hl>` tag (e.g., `<hl>وكيمياء عصبية تختفي</hl>`). Clean descenders without straight underlines.
     - Plain-Text Stripping: `<hl>` and `</hl>` tags are strictly stripped (`re.sub(r"</?hl>", "", text)`) when text is reused in plain-text logs, post descriptions, or summary-ar.txt.
-  - **Page 1 (0:00 - 0:10.8, 10.8s):** Main video title in Modern Standard Arabic + Category tag + first explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
-  - **Page 2 (0:10.8 - 0:18.6, 7.8s):** next explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
-  - **Page 3 (0:18.6 - 0:26.4, 7.8s):** distinct example or consequence (~6 lines, 2–3 `<hl>` highlighted phrases).
-  - **Page 4 (0:26.4 - 0:34.2, 7.8s):** source-appropriate payoff or nuance (~6 lines, 2–3 `<hl>` highlighted phrases).
-  - **Conclusion & CTA Screen (0:34.2 - 0:42.2, 8.0s):**
+  - **Page 1 (0:00 - 0:12.8, 12.8s):** Main video title in Modern Standard Arabic + Category tag + first explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 2 (0:12.8 - 0:22.6, 9.8s):** next explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 3 (0:22.6 - 0:32.4, 9.8s):** distinct example or consequence (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 4 (0:32.4 - 0:42.2, 9.8s):** source-appropriate payoff or nuance (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Conclusion & CTA Screen (0:42.2 - 0:50.2, 8.0s):**
     - **Main Ending Text:** Gold-highlighted V3-style Footer Action / Question (4–18 words, maximum 140 characters), replacing the declarative punchline on this existing screen. Tie it to a concrete detail in the reading pages; no swipe instructions.
     - **Secondary CTA:** Sleek dark pill with outline: `احفظ الفيديو لتستفيد منه لاحقاً`.
     - **Primary Description Badge:** Prominent, filled Gold Badge (`#F5C518`) with bold black text: `السر الأهم والخطوات التطبيقية بانتظارك في الوصف بالأسفل`.
@@ -202,8 +202,8 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
   - **Hook Script:** Translated title followed by `ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف.` Change only the TTS script; preserve on-screen wording.
   - **Hook Narration:** ElevenLabs TTS Arabic voiceover at `t=0s` (`volume=1.3`, natural human cadence).
   - **Background Instrumental:** (randomly choose `naruto_sadness_and_sorrow.mp3` or `godfather_0013.mp3` per render) ducked to `0.12` during speech, swelling smoothly to `0.70` over 0.6s when narration ends.
-  - **Music Outro Fade:** Background music fades out smoothly before the conclusion page (32.2s – 34.2s).
-  - **Outro Voiceover:** (`assets/music/last voicever.mp3`) starts at `t=34.2s` (`volume=1.1`) and plays for 8.0 seconds during the Conclusion & CTA screen (34.2s – 42.2s).
+  - **Music Outro Fade:** Background music fades out smoothly before the conclusion page (40.2s – 42.2s).
+  - **Outro Voiceover:** (`assets/music/last voicever.mp3`) starts at `t=42.2s` (`volume=1.1`) and plays for 8.0 seconds during the Conclusion & CTA screen (42.2s – 50.2s).
   - **amix Parameters:** Configured with `normalize=0` to ensure vocals remain bold, clear, and unattenuated.
 
 ### 2c. Source-specific Endings (Both Video Versions)
@@ -244,7 +244,7 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
 
 ### 4. Output Files & Anti-Bot Stealth Architecture
 
-- `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4` (38s in V1 / 42.2s in V2 1080×1920 MP4)
+- `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4` (38s in V1 / 50.2s in V2 1080×1920 MP4)
   - **Strict Single-Video Anti-Bot Protocol:** Directly staged as `CapCut_1080p_{YYYYMMDD}_{clean_slug}.mp4`. Any intermediate or temporary `brief.mp4` is **immediately deleted upon creation** so platforms never detect bot script filenames on disk or in file pickers.
   - **Anti-Bot Container Spoofing:** Rendered with `-map_metadata -1`, `+bitexact`, `-metadata:s:v:0 encoder=CapCut`, `-metadata:s:a:0 encoder=CapCut`, `-metadata major_brand=mp42`, completely removing FFmpeg `Lavf`/`Lavc` traces.
   - **Acoustic De-duplication:** Subtle imperceptible audio micro-jitter (±0.5%–1.0%) to prevent Content ID and platform algorithms from clustering videos as repeated duplicate templates.

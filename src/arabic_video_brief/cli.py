@@ -56,7 +56,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--keep-work", action="store_true")
     run.add_argument("--provider", choices=["vyceai", "seekai", "gemini", "apinex", "brainstorm"], help="LLM provider for analysis")
     run.add_argument("--analysis", type=Path, help="Path to pre-computed analysis JSON file (Antigravity Brainstorm mode)")
-    run.add_argument("--version", choices=["v1", "v2"], help="Video version (v1: 38s two-page, v2: 42.2s title hook + four pages; both end with a question). V3 manual packs are authored through the skill, not this video command.")
+    run.add_argument("--version", choices=["v1", "v2"], help="Video version (v1: 38s two-page, v2: 50.2s title hook + four pages; both end with a question). V3 manual packs are authored through the skill, not this video command.")
     run.add_argument("--model", type=str, help="LLM model name override (e.g. claude-sonnet-4-6, gpt-5.6-new)")
     run.add_argument("--no-tts", action="store_true", help="Render visual-only hook without ElevenLabs narration in V2")
     run.add_argument("--force", action="store_true", help="Force overwrite existing output folder")
@@ -323,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
             if sys.stdin.isatty():
                 sys.stderr.write("\nSelect pipeline version:\n")
                 sys.stderr.write("  1. V1 — 38-second, two-page format\n")
-                sys.stderr.write("  2. V2 — 42.2-second, four-page format\n")
+                sys.stderr.write("  2. V2 — 50.2-second, four-page format\n")
                 try:
                     choice = input("Enter choice [1 or 2, default: 2]: ").strip()
                     if choice not in ("", "1", "2"):

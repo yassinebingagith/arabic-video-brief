@@ -41,7 +41,7 @@ Located in `outputs/<video-slug>/v2/manifest.json`:
   - `highlights`: Highlighted words
   - `cta_save`: Save CTA
   - `cta_description`: Description CTA
-- `render`: Details (width, height, duration=42.2, audio, music_track, tts_narration, timeline)
+- `render`: Details (width, height, duration=50.2, audio, music_track, tts_narration, timeline)
 - `files`: Paths to the staged MP4, `summary-ar.txt`, `summary-pages.json`, `hook-ar.txt`, `hook-tts.txt`, `hook-voice.mp3`, `ending-text-ar.txt`, `ending-question-ar.txt`, `conclusion-ar.txt`, `cta-ar.txt`, `creative-plan.json`, `manifest.json`
 
 ## V3 Manual Image Pack

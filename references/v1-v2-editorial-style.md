@@ -31,7 +31,7 @@ fit unrelated episodes unchanged. Vary the narrative structure to suit the conte
   and eliminates the redundant blue footer so calls to action are cleanly reserved for the ending screen.
 - V2: four authored complete explanatory beats, each 30–44 words, 140–160 total.
   Plan the transitions deliberately rather than cutting a V1 paragraph at arbitrary
-  word counts. Keep 10.8s + 7.8s + 7.8s + 7.8s + existing 8s ending.
+  word counts. Keep 12.8s + 9.8s + 9.8s + 9.8s + existing 8s ending.
   Within each of the 4 cards/pages, wrap 2 to 3 key phrases (each 2–3 words long)
   inside `<hl>...</hl>` tags (book highlighter gold style, e.g. `<hl>وكيمياء عصبية تختفي</hl>`).
   Always keep attached single-letter Arabic prefixes (و, ف, ب, ل, ك) inside the `<hl>` tag.
