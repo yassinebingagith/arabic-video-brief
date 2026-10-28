@@ -18,12 +18,14 @@ from ..media import (
     _metadata_line,
     _run,
     _wrap_rtl,
+    create_v2_summary_background,
     find_ffmpeg,
     infer_category,
     render_metadata_bar,
     render_source_card,
     render_top_overlay,
     select_background_music,
+    wrap_v2_text_with_highlights,
 )
 from .editorial import HookCandidate, V2EditorialPackage
 
@@ -140,15 +142,20 @@ def render_v2_summary_page(
     category: str | None = None,
 ) -> None:
     """
-    Renders one of the 4 summary pages (1080x1920) for the lower panel.
-    - NO page counter numbers (completely removed per user instruction).
-    - Page 1 headlines are centered horizontally.
-    - Generous typography (48-52px) filling the lower panel without a huge black void.
-    - Respects bottom 15% safe margin.
+    Renders one of the 4 summary pages (1080x1920) for the lower panel (00:00-00:33).
+    - Background: Deep black-and-navy radial glow with soft Gaussian blur effect (#102A45 / #071322 over #02060D).
+    - Page 1 retains the translated title block header (centered).
+    - Pages 2, 3, 4 render ONLY the 6-line Arabic paragraph (NO card kickers, NO numbers, NO footer dots).
+    - Base Arabic text: Bold (700) Crisp White (#F8FAFC), line height 1.85.
+    - Highlighted phrases (<hl>...</hl>): Warm Gold (#FFD700) Bold (750-800) with translucent warm gold rounded pill
+      box (background: rgba(255, 215, 0, 0.14); border-radius: 10px; padding: 2px 10px 4px 10px;), no-wrap,
+      clean descenders without underlines.
     """
     from PIL import Image, ImageDraw, ImageFont
+    import arabic_reshaper
+    from bidi.algorithm import get_display
 
-    image = Image.new("RGB", (settings.width, settings.height), "#000000")
+    image = create_v2_summary_background(settings.width, settings.height, settings.top_height)
     draw = ImageDraw.Draw(image)
 
     panel_top = settings.top_height
@@ -161,14 +168,17 @@ def render_v2_summary_page(
 
     cur_y = panel_top + 20
 
-    # Page 1: Centered Headline Block
+    # Page 1: Centered Headline Block (Preserved verbatim per user instruction)
     if page_index == 1:
         if main_title:
             title_font = ImageFont.truetype(str(settings.font_path), 38)
             try:
-                title_font.set_variation_by_name("Bold")
+                title_font.set_variation_by_axes([700, 100])
             except (AttributeError, OSError, ValueError):
-                pass
+                try:
+                    title_font.set_variation_by_name("Bold")
+                except (AttributeError, OSError, ValueError):
+                    pass
             m_lines = _balance_wrap(main_title, title_font, max_text_width)
             title_line_h = math.ceil(38 * 1.35)
             for ml in m_lines:
@@ -182,9 +192,12 @@ def render_v2_summary_page(
 
         header_font = ImageFont.truetype(str(settings.font_path), 28)
         try:
-            header_font.set_variation_by_name("Bold")
+            header_font.set_variation_by_axes([700, 100])
         except (AttributeError, OSError, ValueError):
-            pass
+            try:
+                header_font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
         h_vis = _display_text("فيديوهات وجب مشاهدتها على اليوتيوب")
         h_box = draw.textbbox((0, 0), h_vis, font=header_font)
         h_w = h_box[2] - h_box[0]
@@ -194,45 +207,143 @@ def render_v2_summary_page(
         if category:
             sub_font = ImageFont.truetype(str(settings.font_path), 22)
             try:
-                sub_font.set_variation_by_name("Medium")
+                sub_font.set_variation_by_axes([500, 100])
             except (AttributeError, OSError, ValueError):
-                pass
+                try:
+                    sub_font.set_variation_by_name("Medium")
+                except (AttributeError, OSError, ValueError):
+                    pass
             s_vis = _display_text(f"النوع: {category}")
             s_box = draw.textbbox((0, 0), s_vis, font=sub_font)
             s_w = s_box[2] - s_box[0]
             draw.text(((settings.width - s_w) // 2, cur_y), s_vis, font=sub_font, fill="#A0A0A0")  # Centered!
             cur_y += (s_box[3] - s_box[1]) + 26
 
-    # Body Typography: Large and filling the available panel comfortably
-    # Page 1 has header block so 48px; Pages 2, 3, 4 have full space so 52px
-    body_font_size = 48 if page_index == 1 else 52
-    body_font = ImageFont.truetype(str(settings.font_path), body_font_size)
-    try:
-        body_font.set_variation_by_name("SemiBold")
-    except (AttributeError, OSError, ValueError):
-        pass
-
+    # Clean text braces while preserving <hl> tags
     clean_text = text.replace("{", "").replace("}", "")
-    lines = _wrap_rtl(clean_text, body_font, max_text_width)
-    line_h = math.ceil(body_font_size * 1.55)
+
+    # Base typography: Bold (700) across entire paragraph so text never looks thin
+    # Line height: 1.85 for clean vertical breathing room
+    font_size = 42 if page_index == 1 else 46
+    body_font = ImageFont.truetype(str(settings.font_path), font_size)
+    try:
+        body_font.set_variation_by_axes([700, 100])
+    except (AttributeError, OSError, ValueError):
+        try:
+            body_font.set_variation_by_name("Bold")
+        except (AttributeError, OSError, ValueError):
+            pass
+
+    lines = wrap_v2_text_with_highlights(clean_text, body_font, max_text_width)
+
+    # Adaptive font scaling to ensure it fits ~6 lines comfortably within safe height
+    min_size = 34
+    while len(lines) > 6 and font_size > min_size:
+        font_size -= 2
+        body_font = ImageFont.truetype(str(settings.font_path), font_size)
+        try:
+            body_font.set_variation_by_axes([700, 100])
+        except (AttributeError, OSError, ValueError):
+            try:
+                body_font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
+        lines = wrap_v2_text_with_highlights(clean_text, body_font, max_text_width)
+
+    # Highlight font (Bold 750-800)
+    hl_font = ImageFont.truetype(str(settings.font_path), font_size)
+    try:
+        hl_font.set_variation_by_axes([750, 100])
+    except (AttributeError, OSError, ValueError):
+        try:
+            hl_font.set_variation_by_name("Bold")
+        except (AttributeError, OSError, ValueError):
+            pass
+
+    line_h = math.ceil(font_size * 1.85)
     total_text_h = len(lines) * line_h
 
     # Vertically balance the body text within the remaining panel height
     remaining_h = safe_bottom - cur_y
-    if remaining_h > total_text_h and page_index > 1:
+    if page_index > 1:
         # Vertically center in the lower panel
         cur_y = panel_top + (safe_bottom - panel_top - total_text_h) // 2
     elif remaining_h > total_text_h:
-        # Add slight breathing room below header
+        # Add slight breathing room below header on page 1
         cur_y += max(16, (remaining_h - total_text_h) // 3)
 
+    # Render highlight pills on an overlay layer
+    overlay = Image.new("RGBA", (settings.width, settings.height), (0, 0, 0, 0))
+    draw_overlay = ImageDraw.Draw(overlay)
+    dummy = ImageDraw.Draw(Image.new("L", (1, 1)))
+
+    rendered_lines: list[list[dict[str, Any]]] = []
+    line_y = cur_y
+
     for line in lines:
-        vis = _display_text(line)
-        box = draw.textbbox((0, 0), vis, font=body_font)
-        lw = box[2] - box[0]
-        x = content_right - lw
-        draw.text((x, cur_y), vis, font=body_font, fill="#FFFFFF")
-        cur_y += line_h
+        pattern = re.compile(r"(<hl>.*?</hl>)")
+        raw_segments = pattern.split(line)
+        segments: list[tuple[str, bool]] = []
+        for seg in raw_segments:
+            if not seg:
+                continue
+            if seg.startswith("<hl>") and seg.endswith("</hl>"):
+                segments.append((seg[4:-5], True))
+            else:
+                segments.append((seg, False))
+
+        processed_segments: list[dict[str, Any]] = []
+        for seg_text, is_hl in segments:
+            f = hl_font if is_hl else body_font
+            reshaped = arabic_reshaper.reshape(seg_text)
+            vis = get_display(reshaped, base_dir="R")
+            w = dummy.textlength(vis, font=f)
+            processed_segments.append({
+                "text": seg_text,
+                "vis": vis,
+                "is_hl": is_hl,
+                "font": f,
+                "width": w,
+            })
+
+        # In RTL Arabic, segment 0 is far right (content_right)
+        cur_right = content_right
+        for s in processed_segments:
+            w = s["width"]
+            x = cur_right - w
+            s["x"] = x
+            s["y"] = line_y
+            if s["is_hl"]:
+                bbox = dummy.textbbox((x, line_y), s["vis"], font=s["font"])
+                # Highlight pill box: rgba(255, 215, 0, 0.14), radius=10px, padding: 2px 10px 4px 10px
+                pad_top = 2
+                pad_bottom = 4
+                pad_x = 10
+                pill_box = (
+                    bbox[0] - pad_x,
+                    bbox[1] - pad_top,
+                    bbox[2] + pad_x,
+                    bbox[3] + pad_bottom,
+                )
+                draw_overlay.rounded_rectangle(
+                    pill_box,
+                    radius=10,
+                    fill=(255, 215, 0, int(255 * 0.14)),
+                )
+            cur_right = x
+
+        rendered_lines.append(processed_segments)
+        line_y += line_h
+
+    # Composite translucent highlight pills over background
+    image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+    draw = ImageDraw.Draw(image)
+
+    # Draw text: Crisp White (#F8FAFC) for base, Warm Gold (#FFD700) for highlights
+    for line_segs in rendered_lines:
+        for s in line_segs:
+            color = "#FFD700" if s["is_hl"] else "#F8FAFC"
+            draw.text((s["x"], s["y"]), s["vis"], font=s["font"], fill=color)
 
     image.save(output_path, format="PNG")
 

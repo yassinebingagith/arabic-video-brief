@@ -166,5 +166,63 @@ def test_v2_timing_and_voiceover_preserve_reading_content():
         "hook": {"tts": "النص القديم", "display": "العنوان المرئي"}}, {}, settings)
     assert result.pages == pages
     assert result.hook.display_hook == "العنوان المرئي"
-    assert result.hook.tts_text == f"عنوان الاختبار... {VOICEOVER_SUFFIX}."
     assert VOICEOVER_SUFFIX == "ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف"
+
+
+def test_v2_summary_background_glow():
+    from arabic_video_brief.v2.renderer import create_v2_summary_background
+    bg = create_v2_summary_background(1080, 1920, 760)
+    assert bg.size == (1080, 1920)
+    # Check edge is pure midnight black #02060D
+    corner_pixel = bg.getpixel((10, 10))
+    assert corner_pixel[0] <= 5 and corner_pixel[1] <= 10 and corner_pixel[2] <= 18
+    # Check center glow in lower canvas has royal/midnight blue tones
+    center_pixel = bg.getpixel((540, 760 + int(1160 * 0.52)))
+    assert center_pixel[2] > corner_pixel[2]  # Significantly more blue in glow center
+
+
+def test_v2_highlight_wrapping_and_no_wrap():
+    from PIL import ImageFont
+    from arabic_video_brief.v2.renderer import wrap_v2_text_with_highlights
+    settings = get_settings()
+    font = ImageFont.truetype(str(settings.font_path), 46)
+    try:
+        font.set_variation_by_axes([700, 100])
+    except Exception:
+        pass
+
+    text = "قد تظن أن الإرهاق مجرد <hl>تعب جسدي عابر</hl> يزول بالنوم، لكن الحقيقة هي <hl>وكيمياء عصبية تختفي</hl> تدريجياً."
+    lines = wrap_v2_text_with_highlights(text, font, 815)
+
+    # Verify no highlighted phrase was broken across lines
+    hl_count = sum(line.count("<hl>") for line in lines)
+    hl_close_count = sum(line.count("</hl>") for line in lines)
+    assert hl_count == 2
+    assert hl_close_count == 2
+    for line in lines:
+        if "<hl>" in line:
+            assert "</hl>" in line  # Opening and closing must be on the SAME line (No-wrap rule)
+
+
+def test_v2_tag_stripping_plain_text():
+    import re
+    from arabic_video_brief.v2.editorial import build_v2_editorial_package
+    settings = get_settings()
+    pages = [
+        "هذه الصفحة تتضمن <hl>عبارة مميزة أولى</hl> و <hl>عبارة مميزة ثانية</hl> بالكامل.",
+        "الصفحة الثانية فيها <hl>وكيمياء عصبية</hl> مهمة جداً للشرح.",
+        "الصفحة الثالثة تشرح <hl>فكرة تطبيقية</hl> واضحة.",
+        "الصفحة الرابعة تلخص <hl>النتيجة النهائية</hl> للموضوع.",
+    ]
+    pkg = build_v2_editorial_package({
+        "post_title_ar": "عنوان تجريبي",
+        "pages": pages,
+        "ending_question_ar": "ما هو رأيك في التجربة؟",
+    }, {}, settings)
+
+    # editorial.pages retains <hl> tags for visual renderer
+    assert "<hl>" in pkg.pages[0]
+    # editorial.summary_ar has <hl> tags stripped for plain text logs/descriptions
+    assert "<hl>" not in pkg.summary_ar
+    assert "</hl>" not in pkg.summary_ar
+

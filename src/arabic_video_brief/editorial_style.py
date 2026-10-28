@@ -27,6 +27,14 @@ SUMMARY_SPEC = """
    separated by a single newline. Each paragraph is a V1 reading page. Apply the
    CORE EXPLANATORY STYLE below. Deliver an explanation on page 1, not just a teaser;
    page 2 develops the idea rather than repeating it. No headings or bullet lists.
+   CRITICAL HIGHLIGHT RULE (V1 & V2): In each paragraph of summary_ar (for V1) and on each
+   of the 4 pages (for V2), wrap 2 to 3 key phrases (each 2–3 words long) inside <hl>...</hl> tags
+   (book highlighter style, e.g. <hl>وكيمياء عصبية تختفي</hl>).
+   Always keep attached single-letter Arabic prefixes (و, ف, ب, ل, ك) INSIDE the <hl> tag
+   (e.g., <hl>وكيمياء عصبية تختفي</hl>, never و<hl>كيمياء عصبية تختفي</hl>).
+   STRICT NO-CTA RULE IN SUMMARY: Absolutely NEVER conclude summary_ar or page 2 with meta-CTAs or
+   phrases pointing to the description (such as 'المزيد من التفاصيل في صندوق الوصف' or 'اقرأ الوصف');
+   the final 8-second video ending screen already handles all calls to action.
    Think in four linked explanatory beats within these two paragraphs so V2 can
    give each beat its own page. End sentences at meaningful beat boundaries.
    Also return `pages`: exactly four strings of 30–44 words each for V2. Write each
@@ -49,4 +57,6 @@ REWRITE_STYLE = """
 حافظ على أسلوب الشرح المباشر: واقعة أو مثال محدد، ثم تفسير الآلية وما يضيفه كل جزء.
 لا تستبدل التفاصيل بتعميمات أو حكم تحفيزية، ولا تكرر الفكرة بين الصفحات.
 حافظ على الأسماء والأرقام والتحفظات والمعنى، ولا تضف حقائق أو أمثلة جديدة لسد عدد الكلمات.
+في كل فقرة (لـ V1) أو صفحة (لـ V2)، أحِط عبارتين إلى 3 عبارات رئيسية (كل منها 2 إلى 3 كلمات) بوسوم <hl>...</hl> لتمييزها بنمط قلم التظليل، مع إبقاء حروف العطف والجر المتصلة (و، ف، ب، ل، ك) داخل الوسم دائماً.
+يُمنع منعاً باتاً إنهاء الملخص بعبارات توجيهية لصندوق الوصف مثل «المزيد من التفاصيل في صندوق الوصف» أو «اقرأ الوصف».
 """.strip()

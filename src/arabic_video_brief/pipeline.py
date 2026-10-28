@@ -324,10 +324,11 @@ def process_source(
         summary_path = item_dir / "summary-ar.txt"
         manifest_path = item_dir / "manifest.json"
         write_json(transcript_path, {"source_language": analysis.get("source_language"), "segments": analysis.get("transcript", [])})
-        summary_path.write_text(analysis["summary_ar"].strip() + "\n", encoding="utf-8")
-        post_title = generate_post_title(metadata, analysis.get("post_title_ar") or analysis.get("summary_ar", ""))
+        plain_summary = re.sub(r"</?hl>", "", analysis["summary_ar"]).strip()
+        summary_path.write_text(plain_summary + "\n", encoding="utf-8")
+        post_title = generate_post_title(metadata, analysis.get("post_title_ar") or plain_summary)
         from .ending import resolve_ending_question
-        ending_question = resolve_ending_question(analysis, metadata, analysis["summary_ar"], settings)
+        ending_question = resolve_ending_question(analysis, metadata, plain_summary, settings)
         (item_dir / "ending-question-ar.txt").write_text(ending_question + "\n", encoding="utf-8")
         render_details = render_video(
             local_video, thumbnail, page_one, page_two, selected, temp_render_path, settings, metadata=metadata, post_title=post_title, ending_question=ending_question
@@ -353,7 +354,7 @@ def process_source(
             if temp_render_path.is_file():
                 temp_render_path.unlink(missing_ok=True)
         final_path = staged_video_path
-        post_description = generate_post_description(metadata, analysis["summary_ar"], analysis.get("post_description", ""))
+        post_description = generate_post_description(metadata, plain_summary, analysis.get("post_description", ""))
         post_title_path = item_dir / "post-title.txt"
         post_desc_path = item_dir / "post-description.txt"
 

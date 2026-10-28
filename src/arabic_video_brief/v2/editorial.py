@@ -181,14 +181,16 @@ def split_half_into_two_pages(half_text: str, half_index: int, settings: Setting
 1. الأمانة التامة للنص الأصلي: يمنع منعاً باتاً إضافة أي نصائح خارجية، أو اختراع روتين صباحي أو مسائي، أو ذكر عادات نوم أو أي معلومات غير موجودة في النص الأصلي. التزم بدقة بنقل نفس الأفكار والحقائق الواردة في النص دون زيادة أو نقصان.
 2. يمنع قطع الجملة بين الصفحتين. كل صفحة يجب أن تبدأ بجملة مستقلة المعنى وتنتهي بنقطة تامة.
 3. لا تستخدم نقاطاً نقطية أو عناوين.
+4. قم بتمييز عبارتين أو ثلاث عبارات رئيسية في كل صفحة (كل عبارة تتكون من كلمتين إلى 3 كلمات) عبر إحاطتها بوسوم <hl>...</hl> (مثال: <hl>وكيمياء عصبية تختفي</hl>).
+قاعدة حاسمة للغة العربية: أبقِ دائماً حروف العطف والجر المتصلة (و، ف، ب، ل، ك) داخل وسم <hl> (مثل <hl>وكيمياء عصبية</hl> وليس و<hl>كيمياء عصبية</hl>).
 
 النص الأصلي:
 {clean_text}
 
 أعد الناتج بصيغة JSON فقط:
 {{
-  "page_a": "نص الصفحة الأولى (30-45 كلمة تنتهي بنقطة)",
-  "page_b": "نص الصفحة الثانية (30-45 كلمة تنتهي بنقطة)"
+  "page_a": "نص الصفحة الأولى (30-45 كلمة تنتهي بنقطة مع 2-3 عبارات داخل وسوم <hl>...</hl>)",
+  "page_b": "نص الصفحة الثانية (30-45 كلمة تنتهي بنقطة مع 2-3 عبارات داخل وسوم <hl>...</hl>)"
 }}
 """.strip()
 
@@ -199,7 +201,7 @@ def split_half_into_two_pages(half_text: str, half_index: int, settings: Setting
             data = json.loads(match.group(1))
             pa = str(data.get("page_a", "")).strip()
             pb = str(data.get("page_b", "")).strip()
-            if pa and pb and word_count(pa) >= 20 and word_count(pb) >= 20:
+            if pa and pb and word_count(re.sub(r"</?hl>", "", pa)) >= 20 and word_count(re.sub(r"</?hl>", "", pb)) >= 20:
                 if not re.search(r"[.!?؟؛]$", pa):
                     pa += "."
                 if not re.search(r"[.!?؟؛]$", pb):
@@ -271,8 +273,8 @@ def build_v2_editorial_package(
             str(p.get("text", "") if isinstance(p, dict) else p).strip().replace("{", "").replace("}", "")
             for p in raw_pages
         ]
-        # Export the actual reading copy, not a separately adjusted base summary.
-        summary_ar = "\n\n".join(four_pages)
+        # Export the actual reading copy, stripping <hl> tags for plain text summary_ar.
+        summary_ar = re.sub(r"</?hl>", "", "\n\n".join(four_pages))
     else:
         # Base summary must have two semantic halves
         paragraphs = [p.strip() for p in summary_ar.split("\n") if p.strip()]
@@ -341,7 +343,7 @@ def build_v2_editorial_package(
             "suffix": VOICEOVER_SUFFIX,
         },
         "pages": [
-            {"page": i + 1, "words": word_count(p), "text": p}
+            {"page": i + 1, "words": word_count(re.sub(r"</?hl>", "", p)), "text": p}
             for i, p in enumerate(four_pages)
         ],
         "conclusion": {

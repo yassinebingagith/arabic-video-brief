@@ -48,8 +48,8 @@ Honor links, source folders, and mode choices already supplied. If the intended 
 
 Use the same skill name, `$arabic-video-brief`, with the requested mode:
 
-1. **V1 — Two-Page Video (38s):** Two 15-second reading pages, then an 8-second question ending. See [references/v1-render-spec.md](references/v1-render-spec.md).
-2. **V2 — Four-Page Video (42.2s):** Existing title hook and four-page pacing, then an 8-second question ending. See [references/v2-render-spec.md](references/v2-render-spec.md).
+1. **V1 — Two-Page Video (38s):** Two 15-second reading pages on a deep black-and-navy radial glow canvas with bold 700 white typography and warm gold book-highlighted pills (<hl>...</hl>), followed by an 8-second question ending (strictly no duplicate description CTA footer). See [references/v1-render-spec.md](references/v1-render-spec.md).
+2. **V2 — Four-Page Video (42.2s):** Existing title hook and four-page pacing on a deep black-and-navy radial glow canvas with bold 700 white typography and warm gold book-highlighted pills (<hl>...</hl>), followed by an 8-second question ending. See [references/v2-render-spec.md](references/v2-render-spec.md).
 3. **V3 — Instagram Carousel + Facebook Photo Pack:** One 4–6-slide Instagram carousel and one separate Facebook photo concept per source, with standalone prompts, reference instructions, Arabic captions, and a generation plan. After preparing the entire pack, ask whether to generate via a configured image API, in one persistent ChatGPT/MCP generation session, or to stop for manual generation. Follow [references/v3-carousel-pack.md](references/v3-carousel-pack.md).
 
 **Routing rules:**
@@ -77,7 +77,7 @@ Before processing videos, prompt the user with `ask_question` to select how tran
 4. **SeekAI API (`deepseek-v4-flash`):** Uses SeekAI endpoint from `.env`.
 
 > [!IMPORTANT]
-> **Suggested engine:** Antigravity Brainstorm LLM. Use it when the user chooses it or explicitly asks you to choose the engine; do not treat an unanswered setup question as consent. In Brainstorm mode, author the complete analysis JSON (including `ending_question_ar`, V2 `pages` and `ending_text_ar`, and `thumbnail_hook_ar` when covers are requested) and pass `--provider brainstorm --analysis <file>`; do not silently make paid analysis calls.
+> **Suggested engine:** Antigravity Brainstorm LLM. Use it when the user chooses it or explicitly asks you to choose the engine; do not treat an unanswered setup question as consent. In Brainstorm mode, author the complete analysis JSON (including `ending_question_ar`, V1/V2 2–3 `<hl>...</hl>` book-highlighted key phrases per card keeping attached prefixes inside, strict avoidance of trailing description CTA sentences in the summary, `ending_text_ar`, and `thumbnail_hook_ar` when covers are requested) and pass `--provider brainstorm --analysis <file>`; do not silently make paid analysis calls.
 
 ### Step 3.2: Deep-Dive Educational Synthesis Decision Gate (ملخص معرفي مطوّل وشامل)
 
@@ -181,10 +181,17 @@ Drafts, scheduled uploads that are not live yet, failed attempts, prompt generat
     - **Multi-line Title:** Full video title wraps cleanly without truncation.
     - **Seamless Alpha Gradient:** Feathers from `y=490` to `y=760` into pure black `#000000`.
 - **Bottom Panel (1080×1160) - 4 Text Pages + 1 Conclusion Screen:**
-  - **Page 1 (0:00 - 0:10.8, 10.8s):** Main video title in Modern Standard Arabic + Category tag + first explanatory beat with a concrete entry point and useful reveal (30–44 words, existing gold highlighting).
-  - **Page 2 (0:10.8 - 0:18.6, 7.8s):** next explanatory beat adding mechanism, evidence or context (30–44 words).
-  - **Page 3 (0:18.6 - 0:26.4, 7.8s):** a distinct example, comparison, development or consequence (30–44 words).
-  - **Page 4 (0:26.4 - 0:34.2, 7.8s):** the source-appropriate payoff or nuance (30–44 words), without a generic conclusion or forced advice.
+  - **Background Style:** Black & Deep Royal/Midnight Blue radial glow with soft Gaussian blur effect: Center `#102A45` softly blurred into `#071322` (Dark Navy) and `#02060D` (Pure Midnight Black) at the edges.
+  - **Typography & Book Highlighter Gold Style (All Bold):**
+    - Render ONLY the 6-line Arabic paragraph on each card (plus existing centered translated title/subtitle header on Card 1). No card numbers, no kickers, no footer dots.
+    - Base Arabic text: Bold (700) crisp white (#F8FAFC / #FFFFFF) across the entire paragraph; line height 1.85.
+    - Highlighted phrases (<hl>...</hl>): 2 to 3 key phrases per card (each 2–3 words long) wrapped in `<hl>...</hl>` tags, rendered in Warm Gold (#FFD700), Bold (750–800), with a translucent warm gold rounded pill box behind the phrase (`background: rgba(255, 215, 0, 0.14); border-radius: 10px; padding: 2px 10px 4px 10px;`).
+    - No-Wrap Rule: spaces inside `<hl>...</hl>` replaced with non-breaking spaces (\u00A0) so highlighted phrases never split across two lines. Attached single-letter Arabic prefixes (و, ف, ب, ل, ك) stay INSIDE the `<hl>` tag (e.g., `<hl>وكيمياء عصبية تختفي</hl>`). Clean descenders without straight underlines.
+    - Plain-Text Stripping: `<hl>` and `</hl>` tags are strictly stripped (`re.sub(r"</?hl>", "", text)`) when text is reused in plain-text logs, post descriptions, or summary-ar.txt.
+  - **Page 1 (0:00 - 0:10.8, 10.8s):** Main video title in Modern Standard Arabic + Category tag + first explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 2 (0:10.8 - 0:18.6, 7.8s):** next explanatory beat (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 3 (0:18.6 - 0:26.4, 7.8s):** distinct example or consequence (~6 lines, 2–3 `<hl>` highlighted phrases).
+  - **Page 4 (0:26.4 - 0:34.2, 7.8s):** source-appropriate payoff or nuance (~6 lines, 2–3 `<hl>` highlighted phrases).
   - **Conclusion & CTA Screen (0:34.2 - 0:42.2, 8.0s):**
     - **Main Ending Text:** Gold-highlighted V3-style Footer Action / Question (4–18 words, maximum 140 characters), replacing the declarative punchline on this existing screen. Tie it to a concrete detail in the reading pages; no swipe instructions.
     - **Secondary CTA:** Sleek dark pill with outline: `احفظ الفيديو لتستفيد منه لاحقاً`.

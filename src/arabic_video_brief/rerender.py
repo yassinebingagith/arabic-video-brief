@@ -1,9 +1,10 @@
-from __future__ import annotations
-
+from datetime import datetime
 import json
 import logging
-import tempfile
 from pathlib import Path
+import re
+import shutil
+import tempfile
 from typing import Any
 
 from .config import Settings, get_settings
@@ -144,9 +145,25 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
                 ending_question=question,
             )
 
+    if output_video_path.is_file():
+        today_str = datetime.now().strftime("%Y%m%d")
+        clean_slug = re.sub(r"[^\w\s-]", "", post_title or metadata.get("title", "")).strip()
+        clean_slug = re.sub(r"[-\s]+", "-", clean_slug)
+        short_slug = clean_slug[:40].strip("-")
+        capcut_name = f"CapCut_1080p_{today_str}_{short_slug}.mp4"
+        staged_video_path = folder / capcut_name
+        for old_vid in folder.glob("CapCut_1080p_*.mp4"):
+            if old_vid != staged_video_path:
+                old_vid.unlink(missing_ok=True)
+        if output_video_path != staged_video_path:
+            shutil.move(str(output_video_path), str(staged_video_path))
+        output_video_path = staged_video_path
+
     manifest["render"] = render_details
     manifest["ending_question_ar"] = question
     manifest.setdefault("files", {})["ending_question_ar"] = str(question_file)
+    manifest.setdefault("files", {})["video"] = str(output_video_path)
+    manifest["video_path"] = str(output_video_path)
     if is_v2:
         footer_file.write_text(question + "\n", encoding="utf-8")
         manifest["ending_text_ar"] = question

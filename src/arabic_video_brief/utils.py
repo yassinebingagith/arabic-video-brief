@@ -60,11 +60,12 @@ def source_hash(value: str) -> str:
 
 
 def word_count(text: str) -> int:
-    return len(re.findall(r"\S+", text.strip()))
+    clean = re.sub(r"</?hl>", "", text)
+    return len(re.findall(r"\S+", clean.strip()))
 
 
 def split_summary(text: str, page_min_words: int = 70, page_max_words: int = 80) -> tuple[str, str]:
-    paragraphs = [" ".join(p.split()) for p in text.splitlines() if p.strip()]
+    paragraphs = [p.strip() for p in text.splitlines() if p.strip()]
     if len(paragraphs) == 2 and all(page_min_words <= word_count(p) <= page_max_words for p in paragraphs):
         return paragraphs[0], paragraphs[1]
     clean = re.sub(r"\s+", " ", text).strip()

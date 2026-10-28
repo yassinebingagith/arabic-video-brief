@@ -145,11 +145,12 @@ def process_source_v2(
         editorial = build_v2_editorial_package(analysis, metadata, settings)
 
         # Post title and description
+        clean_summary = re.sub(r"</?hl>", "", editorial.summary_ar)
         post_title = generate_post_title(metadata, editorial.post_title_ar)
         post_description = generate_post_description(
             metadata,
-            editorial.summary_ar,
-            narrative_desc=analysis.get("post_description", ""),
+            clean_summary,
+            narrative_desc=re.sub(r"</?hl>", "", analysis.get("post_description", "")),
         )
 
         # Stage 3: Hook Voiceover (ElevenLabs TTS with graceful fallback)
@@ -208,7 +209,7 @@ def process_source_v2(
 
         # Stage 5: Write Output Files
         summary_path = v2_dir / "summary-ar.txt"
-        summary_path.write_text(editorial.summary_ar, encoding="utf-8")
+        summary_path.write_text(clean_summary, encoding="utf-8")
 
         summary_pages_path = v2_dir / "summary-pages.json"
         bounds = settings.v2_page_boundaries
@@ -218,18 +219,19 @@ def process_source_v2(
             {
                 "page": i + 1,
                 "timing": pages_timings[i],
-                "words": len(page_text.split()),
+                "words": len(re.sub(r"</?hl>", "", page_text).split()),
                 "text": page_text,
+                "plain_text": re.sub(r"</?hl>", "", page_text),
             }
             for i, page_text in enumerate(editorial.pages)
         ]
         write_json(summary_pages_path, pages_payload)
 
         post_title_path = v2_dir / "post-title.txt"
-        post_title_path.write_text(post_title, encoding="utf-8")
+        post_title_path.write_text(re.sub(r"</?hl>", "", post_title), encoding="utf-8")
 
         post_desc_path = v2_dir / "post-description.txt"
-        post_desc_path.write_text(post_description, encoding="utf-8")
+        post_desc_path.write_text(re.sub(r"</?hl>", "", post_description), encoding="utf-8")
 
         hook_ar_path = v2_dir / "hook-ar.txt"
         hook_ar_path.write_text(editorial.hook.display_hook, encoding="utf-8")

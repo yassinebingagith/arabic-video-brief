@@ -17,13 +17,17 @@
   - **Channel, Views & Date:** Clearly rendered in 22px/21px semi-bold typography with centered bullet separators.
 
 ## Timeline
-- **0:00 – 0:02.5 (2.5s):** Top panel shows source card with kinetic Ken Burns push-in zoom and floating translucent metadata badge. Bottom panel shows Page 1.
-- **0:02.5 – 0:15 (12.5s):** Top panel plays video stream at `selected_clip["start_seconds"]` with seamless bottom gradient blend and floating metadata badge. Bottom panel continues showing Page 1.
-- **0:15 – 0:30 (15.0s):** Top panel continues video playback (total 27.5s video stream). Bottom panel displays Page 2 with footer: `اقرأ الوصف لمزيد من التفاصيل`. Music fades out between 28.0s and 30.0s.
-- **0:30 – 0:38 (8.0s):** Top panel displays thumbnail card with kinetic Ken Burns zoom and floating badge. Bottom panel shows a topic-specific gold Arabic question above the existing action pill, logo, and description badge accompanied by the outro voiceover.
+- **0:00 – 0:02.5 (2.5s):** Top panel shows source card with kinetic Ken Burns push-in zoom and floating translucent metadata badge. Bottom panel shows Page 1 on deep black-and-navy radial glow canvas.
+- **0:02.5 – 0:15 (12.5s):** Top panel plays video stream at `selected_clip["start_seconds"]` with seamless bottom gradient blend and floating metadata badge. Bottom panel continues showing Page 1 with centered gold title header and book-highlighted text.
+- **0:15 – 0:30 (15.0s):** Top panel continues video playback (total 27.5s video stream). Bottom panel displays Page 2 (vertically centered, 2–3 gold highlighted phrases, strictly NO duplicate description CTA footer or repetitive callout text). Music fades out between 28.0s and 30.0s.
+- **0:30 – 0:38 (8.0s):** Top panel displays thumbnail card with kinetic Ken Burns zoom and floating badge. Bottom panel shows a topic-specific gold Arabic question on the navy radial glow canvas above the action pill, logo, and description badge accompanied by the outro voiceover.
 
 ## Text & Typography
 - **Total Words:** 140–160 Modern Standard Arabic words split into two 70–80 word panels.
+- **Background Style:** Deep royal/midnight blue radial glow (`#102A45`) softly blurred (`sigma=120`) through dark navy (`#071322`) to pure midnight black (`#02060D`) via `create_v2_summary_background`.
+- **Base Typography:** Bold 700 Crisp White (`#F8FAFC`) with generous line height (~1.75–1.80) for clean vertical breathing room.
+- **Book-Highlighter Styling:** 2–3 key phrases per page enclosed in `<hl>...</hl>` tags, rendered in Warm Gold (`#FFD700`) Bold (750–800) with a translucent warm gold rounded pill box (`rgba(255, 215, 0, 0.14)`, radius 10px, padding 2px 10px 4px 10px). Non-breaking spaces (`\u00A0`) prevent phrases from wrapping mid-highlight. Attached single-letter prefixes (`و`, `ف`, `ب`, `ل`, `ك`) stay inside `<hl>`. Clean descenders without underlines.
+- **No Duplicate CTA Footer:** Page 2 does NOT include a blue footer or trailing description callout; all calls to action are cleanly reserved for the 8-second ending screen.
 - **Safe Zone:** 6% left-shift (~65px) to clear platform right-side interaction icons (TikTok/Reels/Shorts).
 
 

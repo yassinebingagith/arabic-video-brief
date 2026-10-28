@@ -655,6 +655,106 @@ def infer_category(metadata: dict[str, Any] | None = None, summary_text: str = "
     return "ثقافة وفكر عام"
 
 
+def create_v2_summary_background(width: int = 1080, height: int = 1920, top_height: int = 760) -> Any:
+    """
+    Renders the lower canvas background behind the Arabic text:
+    Deep black-and-navy radial glow with a soft Gaussian blur effect.
+    Center glow color: #102A45 (Deep Royal/Midnight Blue) softly blurred into
+    #071322 (Dark Navy) and #02060D (Pure Midnight Black) at the edges.
+    Top panel (0 <= y < top_height) remains pure #000000 for seamless video letterboxing.
+    """
+    from PIL import Image, ImageDraw, ImageFilter
+
+    base = Image.new("RGB", (width, height), "#000000")
+    d_base = ImageDraw.Draw(base)
+    d_base.rectangle((0, top_height, width, height), fill="#02060D")
+
+    glow_layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    d_glow = ImageDraw.Draw(glow_layer)
+
+    cx = width // 2
+    lower_h = height - top_height
+    cy = top_height + int(lower_h * 0.52)  # Centered behind the Arabic text paragraph
+
+    # Outer navy ellipse (#071322)
+    rx_outer = int(width * 0.46)
+    ry_outer = int(lower_h * 0.35)
+    d_glow.ellipse((cx - rx_outer, cy - ry_outer, cx + rx_outer, cy + ry_outer), fill=(7, 19, 34, 255))
+
+    # Inner royal blue ellipse (#102A45)
+    rx_inner = int(width * 0.30)
+    ry_inner = int(lower_h * 0.22)
+    d_glow.ellipse((cx - rx_inner, cy - ry_inner, cx + rx_inner, cy + ry_inner), fill=(16, 42, 69, 255))
+
+    # Soft Gaussian blur (sigma=120)
+    blurred_glow = glow_layer.filter(ImageFilter.GaussianBlur(120))
+    base.paste(blurred_glow, (0, 0), blurred_glow)
+    return base
+
+
+def wrap_v2_text_with_highlights(text: str, font: Any, max_width: int) -> list[str]:
+    """
+    Wraps Arabic text respecting <hl>...</hl> tags.
+    Applies the No-Wrap Rule: spaces inside <hl>...</hl> are converted to non-breaking spaces (\u00A0),
+    and words are split on ASCII whitespace so highlighted phrases never split across lines.
+    Defensively ensures attached single-letter prefixes (و, ف, ب, ل, ك) stay inside <hl>.
+    """
+    from PIL import Image, ImageDraw
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    # Defensive fix: pull attached prefixes inside <hl> if placed outside
+    text = re.sub(r"(?:^|(?<=\s))([وفبلك])<hl>", r"<hl>\1", text)
+
+    def replace_spaces_in_hl(match: re.Match[str]) -> str:
+        inner = match.group(1).strip()
+        inner_nbsp = re.sub(r"\s+", "\u00A0", inner)
+        return f"<hl>{inner_nbsp}</hl>"
+
+    text_prepared = re.sub(r"<hl>(.*?)</hl>", replace_spaces_in_hl, text)
+
+    # Split only on ASCII whitespace, keeping \u00A0 non-breaking spaces intact within tokens
+    tokens = [t for t in re.split(r"[ \t\n\r]+", text_prepared) if t]
+    lines: list[str] = []
+    current: list[str] = []
+
+    dummy = ImageDraw.Draw(Image.new("L", (1, 1)))
+
+    for token in tokens:
+        cand_line = " ".join([*current, token])
+        clean_cand = re.sub(r"</?hl>", "", cand_line)
+        reshaped = arabic_reshaper.reshape(clean_cand)
+        vis = get_display(reshaped, base_dir="R")
+        w = dummy.textlength(vis, font=font)
+        if current and w > max_width:
+            lines.append(" ".join(current))
+            current = [token]
+        else:
+            current.append(token)
+
+    if current:
+        lines.append(" ".join(current))
+
+    return lines
+
+
+def sanitize_v1_summary_text(text: str) -> str:
+    """
+    Strips trailing CTA sentences regarding description box from V1 summary pages
+    to eliminate duplication before the CTA screen.
+    """
+    cleaned = re.sub(
+        r"(?:[\.\،\;\s]|^)(?:المزيد من التفاصيل|التفاصيل الكاملة|اقرأ الوصف|تجدون التفاصيل|بانتظارك في الوصف|في صندوق الوصف|في الوصف بالأسفل|تفاصيل هذه النماذج)[^\.\n]*[\.\n]*$",
+        "",
+        text.strip(),
+        flags=re.IGNORECASE,
+    ).strip()
+    if cleaned and not re.search(r"[\.!\?؟؛]$", cleaned):
+        cleaned += "."
+    cleaned = re.sub(r"\.{2,}", ".", cleaned)
+    return cleaned.strip()
+
+
 def render_text_page(
     text: str,
     output: Path,
@@ -665,19 +765,18 @@ def render_text_page(
     footer: str | None = None,
 ) -> int:
     from PIL import Image, ImageDraw, ImageFont
+    import arabic_reshaper
+    from bidi.algorithm import get_display
 
     if not settings.font_path.exists():
         raise RuntimeError(f"Bundled Arabic font is missing: {settings.font_path}")
-    image = Image.new("RGB", (settings.width, settings.height), "#000000")
+
+    image = create_v2_summary_background(settings.width, settings.height, settings.top_height)
     draw = ImageDraw.Draw(image)
     panel_top = settings.top_height
     has_frame = bool(settings.brand_frame_path and settings.brand_frame_path.exists())
+
     if has_frame:
-        # Platform-safe bounding box ensuring zero collision with TikTok/Reels/Shorts UI overlays
-        # Left edge: 110px (inset from left border to avoid hugging the edge)
-        # Right edge: 850px (leaving 230px safety clearance from Like/Comment/Share icons at x >= 975)
-        # Top edge: 800px (20px below top video panel)
-        # Bottom edge: 1520px (leaving 400px / 20.8% margin from screen bottom for timeline scroller & channel handle)
         safe_left = 110
         safe_right = 850
         max_width = safe_right - safe_left  # 740px
@@ -685,14 +784,17 @@ def render_text_page(
         safe_bottom = 1520
         available_height = safe_bottom - safe_top  # 720px
         zone_mid = (safe_left + safe_right) // 2
+        content_right = safe_right
     else:
         bottom_safe_margin = int(settings.height * 0.15)
         side_margin = 100
-        max_width = settings.width - (side_margin * 2)
+        offset_x = int(settings.width * settings.text_offset_ratio)  # ~65px
+        max_width = settings.width - (side_margin * 2) - offset_x   # ~815px
         safe_top = panel_top + 24
         safe_bottom = settings.height - bottom_safe_margin - 24
         available_height = safe_bottom - safe_top
-        zone_mid = settings.width // 2
+        zone_mid = (settings.width - offset_x) // 2
+        content_right = settings.width - side_margin - offset_x
 
     main_font = None
     header_font = None
@@ -709,20 +811,26 @@ def render_text_page(
         title_sz = 34 if has_frame else 36
         main_font = ImageFont.truetype(str(settings.font_path), title_sz)
         try:
-            main_font.set_variation_by_name("Bold")
+            main_font.set_variation_by_axes([700, 100])
         except (AttributeError, OSError, ValueError):
-            pass
+            try:
+                main_font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
         m_lines = _balance_wrap(main_title, main_font, max_width)
         main_line_h = math.ceil(title_sz * 1.35)
-        header_block_height += len(m_lines) * main_line_h + (8 if has_frame else 14)
+        header_block_height += len(m_lines) * main_line_h + (8 if has_frame else 12)
 
     if header:
         h_sz = 26 if has_frame else 28
         header_font = ImageFont.truetype(str(settings.font_path), h_sz)
         try:
-            header_font.set_variation_by_name("Bold")
+            header_font.set_variation_by_axes([700, 100])
         except (AttributeError, OSError, ValueError):
-            pass
+            try:
+                header_font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
         h_vis = _display_text(header)
         h_box = draw.textbbox((0, 0), h_vis, font=header_font)
         header_block_height += (h_box[3] - h_box[1]) + (6 if has_frame else 10)
@@ -731,9 +839,12 @@ def render_text_page(
         s_sz = 22 if has_frame else 22
         sub_font = ImageFont.truetype(str(settings.font_path), s_sz)
         try:
-            sub_font.set_variation_by_name("Medium")
+            sub_font.set_variation_by_axes([500, 100])
         except (AttributeError, OSError, ValueError):
-            pass
+            try:
+                sub_font.set_variation_by_name("Medium")
+            except (AttributeError, OSError, ValueError):
+                pass
         s_vis = _display_text(sub_header)
         s_box = draw.textbbox((0, 0), s_vis, font=sub_font)
         header_block_height += (s_box[3] - s_box[1]) + (12 if has_frame else 20)
@@ -742,81 +853,179 @@ def render_text_page(
         f_sz = 28 if has_frame else 28
         footer_font = ImageFont.truetype(str(settings.font_path), f_sz)
         try:
-            footer_font.set_variation_by_name("Bold")
+            footer_font.set_variation_by_axes([700, 100])
         except (AttributeError, OSError, ValueError):
-            pass
+            try:
+                footer_font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
         f_vis = _display_text(footer)
         f_box = draw.textbbox((0, 0), f_vis, font=footer_font)
         footer_block_height += (f_box[3] - f_box[1]) + (14 if has_frame else 24)
 
-    chosen: tuple[Any, list[str], int] | None = None
-    search_max = 38 if has_frame else settings.font_size
-    search_min = 24 if has_frame else settings.min_font_size
+    clean_text = text.replace("{", "").replace("}", "")
+
+    # For V1 paragraphs (70-80 words), adaptively select font size so all lines fit comfortably
+    chosen: tuple[Any, list[str], int, int] | None = None
+    search_max = 34 if (main_title or header) else 38
+    search_min = 24
     for size in range(search_max, search_min - 1, -1):
         font = ImageFont.truetype(str(settings.font_path), size)
         try:
-            font.set_variation_by_name("SemiBold")
+            font.set_variation_by_axes([700, 100])
         except (AttributeError, OSError, ValueError):
-            pass
-        lines = _wrap_rtl(text, font, max_width)
-        line_height = math.ceil(size * (1.45 if has_frame else 1.55))
+            try:
+                font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
+        lines = wrap_v2_text_with_highlights(clean_text, font, max_width)
+        line_height = math.ceil(size * (1.65 if has_frame else 1.75))
         if (header_block_height + footer_block_height + len(lines) * line_height) <= available_height:
-            chosen = (font, lines, line_height)
+            chosen = (font, lines, line_height, size)
             break
+
     if chosen is None:
         font = ImageFont.truetype(str(settings.font_path), search_min)
         try:
-            font.set_variation_by_name("SemiBold")
+            font.set_variation_by_axes([700, 100])
+        except (AttributeError, OSError, ValueError):
+            try:
+                font.set_variation_by_name("Bold")
+            except (AttributeError, OSError, ValueError):
+                pass
+        lines = wrap_v2_text_with_highlights(clean_text, font, max_width)
+        line_height = math.ceil(search_min * (1.65 if has_frame else 1.75))
+        chosen = (font, lines, line_height, search_min)
+
+    font, lines, line_height, font_size = chosen
+
+    # Highlight font (Bold 750-800)
+    hl_font = ImageFont.truetype(str(settings.font_path), font_size)
+    try:
+        hl_font.set_variation_by_axes([750, 100])
+    except (AttributeError, OSError, ValueError):
+        try:
+            hl_font.set_variation_by_name("Bold")
         except (AttributeError, OSError, ValueError):
             pass
-        lines = _wrap_rtl(text, font, max_width)
-        line_height = math.ceil(search_min * (1.45 if has_frame else 1.55))
-        chosen = (font, lines, line_height)
 
-    font, lines, line_height = chosen
     total_content_height = header_block_height + footer_block_height + len(lines) * line_height
     cur_y = safe_top + (available_height - total_content_height) // 2
-    x_offset = 0 if has_frame else int(settings.width * settings.text_offset_ratio)
 
+    # Render header block if present (Page 1)
     if main_title and m_lines and main_font:
         main_line_h = math.ceil((34 if has_frame else 36) * 1.35)
         for m_line in m_lines:
             m_vis = _display_text(m_line)
             m_box = draw.textbbox((0, 0), m_vis, font=main_font)
             m_w = m_box[2] - m_box[0]
-            x_pos = (zone_mid - m_w // 2) if has_frame else ((settings.width - m_w) // 2 - x_offset)
-            draw.text((x_pos, cur_y), m_vis, font=main_font, fill="#FFFFFF")
+            x_pos = (zone_mid - m_w // 2) if has_frame else ((settings.width - m_w) // 2)
+            draw.text((x_pos, cur_y), m_vis, font=main_font, fill="#F5C518")
             cur_y += main_line_h
-        cur_y += 8 if has_frame else 14
+        cur_y += 8 if has_frame else 10
 
     if header and h_vis and header_font:
         h_box = draw.textbbox((0, 0), h_vis, font=header_font)
         h_w = h_box[2] - h_box[0]
-        x_pos = (zone_mid - h_w // 2) if has_frame else ((settings.width - h_w) // 2 - x_offset)
-        draw.text((x_pos, cur_y), h_vis, font=header_font, fill="#FFD700")
+        x_pos = (zone_mid - h_w // 2) if has_frame else ((settings.width - h_w) // 2)
+        draw.text((x_pos, cur_y), h_vis, font=header_font, fill="#FFFFFF")
         cur_y += (h_box[3] - h_box[1]) + (6 if has_frame else 10)
 
     if sub_header and s_vis and sub_font:
         s_box = draw.textbbox((0, 0), s_vis, font=sub_font)
         s_w = s_box[2] - s_box[0]
-        x_pos = (zone_mid - s_w // 2) if has_frame else ((settings.width - s_w) // 2 - x_offset)
-        draw.text((x_pos, cur_y), s_vis, font=sub_font, fill="#A3A3A3")
+        x_pos = (zone_mid - s_w // 2) if has_frame else ((settings.width - s_w) // 2)
+        draw.text((x_pos, cur_y), s_vis, font=sub_font, fill="#A0A0A0")
         cur_y += (s_box[3] - s_box[1]) + (12 if has_frame else 20)
 
-    for logical_line in lines:
-        visual_line = _shape_line(logical_line)
-        bounds = draw.textbbox((0, 0), visual_line, font=font)
-        width = bounds[2] - bounds[0]
-        x_pos = (zone_mid - width // 2) if has_frame else ((settings.width - width) // 2 - x_offset)
-        draw.text((x_pos, cur_y), visual_line, font=font, fill="#F0F0F0")
-        cur_y += line_height
+    # Render highlight pills on overlay layer if highlights are present
+    has_any_hl = any("<hl>" in line for line in lines)
+    if has_any_hl:
+        overlay = Image.new("RGBA", (settings.width, settings.height), (0, 0, 0, 0))
+        draw_overlay = ImageDraw.Draw(overlay)
+        dummy = ImageDraw.Draw(Image.new("L", (1, 1)))
+
+        rendered_lines: list[list[dict[str, Any]]] = []
+        line_y = cur_y
+
+        for line in lines:
+            pattern = re.compile(r"(<hl>.*?</hl>)")
+            raw_segments = pattern.split(line)
+            segments: list[tuple[str, bool]] = []
+            for seg in raw_segments:
+                if not seg:
+                    continue
+                if seg.startswith("<hl>") and seg.endswith("</hl>"):
+                    segments.append((seg[4:-5], True))
+                else:
+                    segments.append((seg, False))
+
+            processed_segments: list[dict[str, Any]] = []
+            for seg_text, is_hl in segments:
+                f = hl_font if is_hl else font
+                reshaped = arabic_reshaper.reshape(seg_text)
+                vis = get_display(reshaped, base_dir="R")
+                w = dummy.textlength(vis, font=f)
+                processed_segments.append({
+                    "text": seg_text,
+                    "vis": vis,
+                    "is_hl": is_hl,
+                    "font": f,
+                    "width": w,
+                })
+
+            cur_right = content_right
+            for s in processed_segments:
+                w = s["width"]
+                x = cur_right - w
+                s["x"] = x
+                s["y"] = line_y
+                if s["is_hl"]:
+                    bbox = dummy.textbbox((x, line_y), s["vis"], font=s["font"])
+                    pad_top = 2
+                    pad_bottom = 4
+                    pad_x = 10
+                    pill_box = (
+                        bbox[0] - pad_x,
+                        bbox[1] - pad_top,
+                        bbox[2] + pad_x,
+                        bbox[3] + pad_bottom,
+                    )
+                    draw_overlay.rounded_rectangle(
+                        pill_box,
+                        radius=10,
+                        fill=(255, 215, 0, int(255 * 0.14)),
+                    )
+                cur_right = x
+
+            rendered_lines.append(processed_segments)
+            line_y += line_height
+
+        image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+        draw = ImageDraw.Draw(image)
+
+        for line_segs in rendered_lines:
+            for s in line_segs:
+                color = "#FFD700" if s["is_hl"] else "#F8FAFC"
+                draw.text((s["x"], s["y"]), s["vis"], font=s["font"], fill=color)
+        cur_y = line_y
+    else:
+        # Standard line drawing without highlights (for backward compatibility / plain text)
+        for logical_line in lines:
+            visual_line = _shape_line(logical_line)
+            bounds = draw.textbbox((0, 0), visual_line, font=font)
+            width = bounds[2] - bounds[0]
+            x_pos = (zone_mid - width // 2) if has_frame else (content_right - width)
+            draw.text((x_pos, cur_y), visual_line, font=font, fill="#F8FAFC")
+            cur_y += line_height
 
     if footer and f_vis and footer_font:
         cur_y += 10 if has_frame else 16
         f_box = draw.textbbox((0, 0), f_vis, font=footer_font)
         f_w = f_box[2] - f_box[0]
-        x_pos = (zone_mid - f_w // 2) if has_frame else ((settings.width - f_w) // 2 - x_offset)
+        x_pos = (zone_mid - f_w // 2) if has_frame else ((settings.width - f_w) // 2)
         draw.text((x_pos, cur_y), f_vis, font=footer_font, fill="#38BDF8")
+
     image.save(output, format="PNG")
     return font.size
 
@@ -838,7 +1047,7 @@ def render_v1_cta_page(
     """
     from PIL import Image, ImageDraw, ImageFont
 
-    image = Image.new("RGB", (settings.width, settings.height), "#000000")
+    image = create_v2_summary_background(settings.width, settings.height, settings.top_height)
     draw = ImageDraw.Draw(image)
 
     panel_top = settings.top_height
@@ -1049,11 +1258,12 @@ def render_video(
             header="فيديوهات وجب مشاهدتها على اليوتيوب",
             sub_header=f"النوع: {category}",
         )
+        page_two_clean = sanitize_v1_summary_text(page_two)
         font_two = render_text_page(
-            page_two,
+            page_two_clean,
             page_two_png,
             settings,
-            footer="اقرأ الوصف لمزيد من التفاصيل",
+            footer=None,
         )
         render_v1_cta_page(
             cta_page_png,

@@ -22,11 +22,26 @@ fit unrelated episodes unchanged. Vary the narrative structure to suit the conte
 
 - V1: two authored paragraphs/pages, each 70–80 words, 140–160 total. Page 1 begins
   explaining; page 2 develops the idea. Keep 15s + 15s + existing 8s ending.
+  Both pages render on the deep black-and-navy radial glow canvas (#102A45 softly blurred into #071322 and #02060D).
+  Typography is Bold (700) white (#F8FAFC) with generous line-height (~1.75).
+  Within each paragraph/page, wrap 2 to 3 key phrases (each 2–3 words long) inside `<hl>...</hl>` tags
+  (book highlighter warm gold #FFD700 style with translucent rounded pill box `rgba(255, 215, 0, 0.14)`).
+  Single-letter Arabic prefixes (و, ف, ب, ل, ك) stay inside `<hl>`.
+  Page 2 strictly avoids trailing description CTA sentences like «المزيد من التفاصيل في صندوق الوصف»,
+  and eliminates the redundant blue footer so calls to action are cleanly reserved for the ending screen.
 - V2: four authored complete explanatory beats, each 30–44 words, 140–160 total.
   Plan the transitions deliberately rather than cutting a V1 paragraph at arbitrary
   word counts. Keep 10.8s + 7.8s + 7.8s + 7.8s + existing 8s ending.
-- Neither format requires a fixed hook/problem/tips/conclusion sequence. Render design,
-  page count, audio, spoken title and timing remain unchanged.
+  Within each of the 4 cards/pages, wrap 2 to 3 key phrases (each 2–3 words long)
+  inside `<hl>...</hl>` tags (book highlighter gold style, e.g. `<hl>وكيمياء عصبية تختفي</hl>`).
+  Always keep attached single-letter Arabic prefixes (و, ف, ب, ل, ك) inside the `<hl>` tag.
+  Strip `<hl>` and `</hl>` tags via `re.sub(r"</?hl>", "", text)` if the text is reused
+  in plain-text logs, post descriptions, or summary-ar.txt.
+  Cards render ONLY the 6-line Arabic paragraph (plus existing translated title block on Card 1),
+  with bold (700) white text, line-height 1.85, and translucent gold highlighter pill boxes
+  behind highlighted phrases without straight underlines or splitting across lines.
+- Neither format requires a fixed hook/problem/tips/conclusion sequence. Audio,
+  spoken title, and video timing remain unchanged.
 
 ## Final screen
 
