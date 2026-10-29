@@ -1,5 +1,7 @@
 # V1 Render Specification (38-Second Format)
 
+Production reading pages use the mandatory [Python/FFmpeg whiteboard engine](python-whiteboard.md), with a complete editable render-project inside each episode folder. The specifications below describe the preserved composition and settled page appearance; reading text is progressively written rather than shown as a static slide.
+
 ## Overview
 - **Total Duration:** 38.0 seconds: 15 + 15 + 8.
 - **Resolution & Aspect Ratio:** 1080×1920 (9:16 vertical MP4).

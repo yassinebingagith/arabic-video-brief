@@ -108,6 +108,9 @@ def test_v2_action_rerender_uses_canonical_footer(tmp_path, monkeypatch):
     captured = {}
     def render(**kwargs):
         captured.update(kwargs)
+        project = tmp_path / "render-project"
+        project.mkdir(exist_ok=True)
+        (project / "project.json").write_text(json.dumps({"renderer": "python-whiteboard"}), encoding="utf-8")
         return {"version": "v2"}
     monkeypatch.setattr("arabic_video_brief.v2.renderer.render_v2_video", render)
     rerender_folder(tmp_path, Settings())

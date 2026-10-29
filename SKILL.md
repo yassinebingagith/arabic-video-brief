@@ -11,6 +11,14 @@ Preserve the user's current video design: title-only opening narration (with the
 
 For V1/V2 writing and video thumbnails, read [references/v1-v2-editorial-style.md](references/v1-v2-editorial-style.md). Use concrete explanatory copy and source-led hybrid covers. Keep V3 unchanged.
 
+## Required V1/V2 renderer and delivery
+
+All new V1/V2 videos and requested rerenders MUST use the production Python/FFmpeg whiteboard engine (`arabic_video_brief.whiteboard`), already wired into both normal renderers. Run the normal `avbrief` pipeline; do not replace reading pages with static slides, introduce a separate rendering project outside the episode folder, or silently switch engines. If rendering fails, fix/report the failure before claiming delivery. V3 remains independent.
+
+Keep full Arabic copy, attached prefixes and unbroken highlighted phrases. Animate white glyph strokes progressively, with no hand/pen, then sweep translucent rounded gold markers right to left after each highlighted phrase. Written words persist. Preserve the existing navy glow, typography, source-panel geometry, thumbnail opening, music selection, hook/outro, final export and metadata parameters. V1 remains 15 + 15 + 8 seconds; V2 remains 12.8 + 9.8 + 9.8 + 9.8 + 8 seconds, including the previously added two seconds per page.
+
+Every episode MUST retain its complete `render-project/` beside the final MP4, with `project.json`, source footage, thumbnail, selected audio/font/branding, page masks and stroke/timing recipes, lossless animated pages, bundled Python engine, `requirements.txt`, `render.py`, and `export.json`. The manifest must identify `renderer: python-whiteboard` and the project folder. A final MP4 alone is incomplete. See [the editable rendering workflow](references/python-whiteboard.md). Older cached static exports require an explicit rerender before being described as current whiteboard outputs.
+
 ## User Interaction & Entry Protocol
 
 ### Required setup before any V1/V2 production

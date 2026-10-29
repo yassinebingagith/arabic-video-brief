@@ -1,4 +1,4 @@
-"""Install this checkout on Windows, macOS or Linux (Python 3.11+, Node.js 22+)."""
+"""Install this checkout on Windows, macOS or Linux (Python 3.11+)."""
 from __future__ import annotations
 
 import argparse
@@ -21,19 +21,10 @@ def main():
     parser.add_argument("--venv-dir", type=Path, default=ROOT / ".venv")
     parser.add_argument("--with-publisher", action="store_true")
     parser.add_argument("--with-tests", action="store_true")
-    parser.add_argument("--skip-renderer", action="store_true", help="Install Python tools only.")
+    parser.add_argument("--skip-renderer", action="store_true", help="Skip media-tool download/verification.")
     args = parser.parse_args()
     if sys.version_info < (3, 11):
         parser.error("Python 3.11 or later is required.")
-    npm = None
-    if not args.skip_renderer:
-        node = shutil.which("node")
-        npm = shutil.which("npm.cmd" if os.name == "nt" else "npm")
-        if not node or not npm:
-            parser.error("Install Node.js 22+ (including npm), then rerun setup.")
-        version = subprocess.check_output([node, "--version"], text=True).strip()
-        if int(version.lstrip("v").split(".")[0]) < 22:
-            parser.error("Node.js 22 or later is required.")
     environment = args.venv_dir.resolve()
     python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     if not python.is_file():
@@ -45,9 +36,8 @@ def main():
     if args.with_tests:
         extras.append("test")
     run([python, "-m", "pip", "install", "-e", f"{ROOT}[{','.join(extras)}]"])
-    if npm:
-        run([npm, "ci", "--no-audit", "--no-fund"])
-        run([npm, "run", "doctor:renderer"])
+    if not args.skip_renderer:
+        run([python, ROOT / "scripts" / "media_doctor.py"])
     if args.with_publisher:
         run([python, "-m", "playwright", "install", "chromium"])
     if not (ROOT / ".env").exists():

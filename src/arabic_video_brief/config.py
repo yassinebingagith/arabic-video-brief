@@ -159,11 +159,11 @@ class Settings:
 
     @property
     def brand_avatar_path(self) -> Path:
-        return PROJECT_ROOT / "assets" / "brand" / "profile_avatar.jpg"
+        return Path(os.environ.get("ARABIC_VIDEO_BRIEF_AVATAR",PROJECT_ROOT / "assets" / "brand" / "profile_avatar.jpg"))
 
     @property
     def brand_frame_path(self) -> Path:
-        return PROJECT_ROOT / "assets" / "brand" / "prussian_airbrush_frame.png"
+        return Path(os.environ.get("ARABIC_VIDEO_BRIEF_FRAME",PROJECT_ROOT / "assets" / "brand" / "prussian_airbrush_frame.png"))
 
     @property
     def outro_voiceover_path(self) -> Path:

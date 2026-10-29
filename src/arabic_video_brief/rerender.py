@@ -55,10 +55,18 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
     with tempfile.TemporaryDirectory(prefix="avbrief-rerender-") as temp_dir_str:
         temp_dir = Path(temp_dir_str)
 
-        print(f"[Rerender] Downloading source clip for: {source} ...")
-        downloaded = download_youtube(source, temp_dir, download_seconds=40.0)
-        local_video = Path(downloaded["video_path"])
-        thumbnail = Path(downloaded["thumbnail_path"]) if downloaded.get("thumbnail_path") else None
+        project_path = folder / "render-project" / "project.json"
+        saved_project = json.loads(project_path.read_text(encoding="utf-8")) if project_path.is_file() else {}
+        assets = saved_project.get("assets", {})
+        saved_source = project_path.parent / assets.get("source", "missing-source")
+        if saved_source.is_file():
+            local_video = saved_source
+            thumbnail = project_path.parent / assets["thumbnail"] if assets.get("thumbnail") else None
+        else:
+            print(f"[Rerender] Downloading source clip for: {source} ...")
+            downloaded = download_youtube(source, temp_dir, download_seconds=40.0)
+            local_video = Path(downloaded["video_path"])
+            thumbnail = Path(downloaded["thumbnail_path"]) if downloaded.get("thumbnail_path") else None
 
         output_video_path = folder / "brief.mp4"
 
@@ -169,6 +177,9 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
         manifest["ending_text_ar"] = question
         manifest.setdefault("files", {})["ending_text_ar"] = str(footer_file)
         manifest.setdefault("conclusion", {})["text"] = question
+    from .whiteboard import finalize_package
+    finalize_package(output_video_path)
+    manifest["files"]["render_project"] = str(folder / "render-project")
     write_json(manifest_path, manifest)
     try:
         print(f"[Rerender] Successfully updated {output_video_path.name}")

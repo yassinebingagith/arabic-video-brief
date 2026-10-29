@@ -28,38 +28,32 @@ An automated production and multi-platform publishing engine for creating V1 (38
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
-- Python **3.11+** and Node.js **22+** (including npm), available on `PATH`.
-- Windows, macOS or Linux on an architecture supported by Chrome for Testing and the bundled FFmpeg packages. Linux also needs Chromium's normal system libraries; minimal containers may need these installed by their administrator.
-- Internet access for the first dependency/browser download.
 
-Setup automatically installs the Python whiteboard dependencies, **Hyperframes 0.8.30**, **GSAP 3.12.5**, the rendering browser, FFmpeg and FFprobe. JavaScript dependencies and their transitive versions are recorded in `package-lock.json`. The browser build is pinned in `package.json`. It does not use another project or a Codex runtime.
+- Python **3.11+** on Windows, macOS or Linux.
+- Internet access for the initial Python dependency/media-tool download.
+
+V1 and V2 render whiteboard writing directly with Python, Pillow, NumPy, OpenCV and FFmpeg. No Node.js or rendering browser is required. Setup finds FFmpeg/FFprobe locally or downloads them using the Python media bootstrap.
 
 ### 2. Clone & Install Dependencies
+
 ```powershell
 git clone https://github.com/yassinebingagith/arabic-video-brief.git
 cd arabic-video-brief
-
-# Windows: creates .venv and installs Python + rendering dependencies
 python scripts/setup.py
-
-# macOS/Linux: same setup using your Python 3 executable
-python3 scripts/setup.py
 ```
 
-Run the command for your platform once. Windows users can alternatively run `./scripts/setup.ps1`; `-PythonPath` accepts a specific Python executable. Setup creates `.env` from the example only when it does not already exist. API keys are not needed to install or render local whiteboard pages.
+On macOS/Linux use `python3` when needed. Windows users can also run `./scripts/setup.ps1`. Activate `.venv` using `.venv\Scripts\Activate.ps1` on Windows or `source .venv/bin/activate` on macOS/Linux. Setup creates `.env` only when absent. API keys are needed for analysis, not for local rendering or saved-project rerenders.
 
-Activate `.venv` with `.venv\Scripts\Activate.ps1` on Windows or `source .venv/bin/activate` on macOS/Linux. To install optional publishing automation, run `python scripts/setup.py --with-publisher` (or `python3`); this also installs Playwright's publishing browser. Add `--with-tests` for the test dependencies.
+Add `--with-tests` for tests. Optional publishing automation uses `--with-publisher`, which installs its own publishing browser. It is independent of the video renderer.
 
-For an existing checkout, `npm ci` installs the pinned JavaScript dependencies and automatically runs browser/runtime setup. `pip install -e '.[whiteboard]'` installs the Python whiteboard dependencies. The generated `.runtime/` configuration and downloaded dependencies stay local and are ignored by Git. After moving a checkout, run `npm run setup:renderer` to refresh its paths. Explicit `CHROME_BIN`, `FFMPEG_BIN` and `FFPROBE_BIN` overrides support managed installations; unset old overrides before a standard setup.
-
-Check the installation and render a short synthetic example without API keys:
+Check media tools and render synthetic V1/V2 examples:
 
 ```powershell
-npm run doctor:renderer
-python scripts/smoke_whiteboard.py
+python scripts/media_doctor.py
+python scripts/python_whiteboard_smoke.py
 ```
 
-These commands assume the virtual environment is active. On macOS/Linux use `python3` if your environment does not provide `python`. See [the whiteboard workflow](tools/animated_reading/README.md) for preparing, rendering, composing and verifying an episode. Whiteboard rendering currently has its own workflow; the regular V1/V2 CLI is not automatically switched to it. GitHub Actions contains Windows/macOS/Linux setup and rendering smoke checks.
+Normal V1/V2 runs now create animated reading pages automatically. Each episode retains a complete `render-project/` with editable Arabic text, stroke and marker timing, source footage, font, branding, selected audio, page intermediates and bundled Python rerender code. See [the editable whiteboard workflow](references/python-whiteboard.md). GitHub Actions includes Windows/macOS/Linux setup and rendering checks.
 
 ### 3. Configure Environment Variables
 Copy the `.env.example` template to `.env`:

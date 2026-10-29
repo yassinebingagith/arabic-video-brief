@@ -1,7 +1,7 @@
 """Derive invisible writing-mask strokes from the existing Arabic font.
 
-These paths are reveal guides only. The visible text remains native shaped SVG
-text; a final mask rectangle restores its complete original glyph edges.
+These paths reveal the original Pillow glyph masks. Completed words restore
+their complete original glyph edges.
 """
 import math
 
@@ -95,6 +95,5 @@ def writing_strokes(text, font, visual_text, width, line_height):
         points = cv2.approxPolyDP(points, .55, False).reshape(-1, 2)
         if len(points) == 1:
             points = np.array([points[0], points[0] + [.1, 0]])
-        path = "M" + " L".join(f"{float(x)-12:.2f},{float(y):.2f}" for x, y in points)
-        result.append({"d": path, "length": round(max(length, .1), 3)})
+        result.append({"points": [[round(float(x)-12,2),round(float(y),2)] for x,y in points], "length": round(max(length, .1), 3)})
     return result

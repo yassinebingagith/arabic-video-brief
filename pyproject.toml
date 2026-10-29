@@ -12,6 +12,9 @@ dependencies = [
   "google-genai>=1.30.0",
   "imageio-ffmpeg>=0.6.0",
   "Pillow>=11.0.0",
+  "numpy>=2.0.0",
+  "opencv-python-headless>=4.11.0",
+  "static-ffmpeg==3.0",
   "python-bidi>=0.6.6",
   "yt-dlp>=2025.1.26",
 ]

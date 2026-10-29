@@ -140,6 +140,7 @@ def render_v2_summary_page(
     settings: Settings,
     main_title: str | None = None,
     category: str | None = None,
+    _layout: dict[str, Any] | None = None,
 ) -> None:
     """
     Renders one of the 4 summary pages (1080x1920) for the lower panel (00:00-00:33).
@@ -272,6 +273,8 @@ def render_v2_summary_page(
         # Add slight breathing room below header on page 1
         cur_y += max(16, (remaining_h - total_text_h) // 3)
 
+    if _layout is not None:
+        _layout.update(base=image.copy(), font_size=font_size)
     # Render highlight pills on an overlay layer
     overlay = Image.new("RGBA", (settings.width, settings.height), (0, 0, 0, 0))
     draw_overlay = ImageDraw.Draw(overlay)
@@ -345,6 +348,8 @@ def render_v2_summary_page(
             color = "#FFD700" if s["is_hl"] else "#F8FAFC"
             draw.text((s["x"], s["y"]), s["vis"], font=s["font"], fill=color)
 
+    if _layout is not None:
+        _layout["lines"] = rendered_lines
     image.save(output_path, format="PNG")
 
 
@@ -648,17 +653,14 @@ def render_v2_video(
         if clean_title and "#shorts" in clean_title.lower():
             clean_title = re.sub(r"#shorts\s*", "", clean_title, flags=re.IGNORECASE).strip()
 
+        from ..whiteboard import WhiteboardProject
+        project = WhiteboardProject(output,settings,"v2",source,thumbnail,editorial.pages,metadata=metadata,selected_clip=selected_clip,
+            title=clean_title,ending=editorial.conclusion_ar,hook=hook_audio_path,
+            editorial={"conclusion_highlights":editorial.conclusion_highlights,"cta_ar":editorial.cta_ar,"cta_description":editorial.cta_description})
+        project.ffmpeg = ffmpeg
         page_pngs: list[Path] = []
         for i, page_text in enumerate(editorial.pages):
-            p_png = temp / f"page_{i + 1}.png"
-            render_v2_summary_page(
-                page_text,
-                page_index=i + 1,
-                output_path=p_png,
-                settings=settings,
-                main_title=clean_title if i == 0 else None,
-                category=category if i == 0 else None,
-            )
+            p_png = project.page(i+1,page_text,bounds[i],bounds[i+1],title=clean_title if i==0 else None,category=category if i==0 else None)
             page_pngs.append(p_png)
 
         conc_png = temp / "conclusion.png"
@@ -678,10 +680,10 @@ def render_v2_video(
 
         filter_parts: list[str] = [
             f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base]",
-            f"[1:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p1]",
-            f"[2:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p2]",
-            f"[3:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p3]",
-            f"[4:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[p4]",
+            f"[1:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS[p1]",
+            f"[2:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[1]}/TB[p2]",
+            f"[3:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[2]}/TB[p3]",
+            f"[4:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[3]}/TB[p4]",
             f"[5:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[conc]",
             f"[base][p1]overlay=0:0:enable='lt(t,{bounds[1]:.1f})'[c1]",
             f"[c1][p2]overlay=0:0:enable='gte(t,{bounds[1]:.1f})*lt(t,{bounds[2]:.1f})'[c2]",
@@ -836,11 +838,13 @@ def render_v2_video(
 
         final_cmd.extend(["-movflags", "+faststart", "-y", str(output)])
 
+        project.finish(final_cmd,output,top_path,conc_png,music_track,outro_voice)
         _run(final_cmd, timeout=900)
         time.sleep(0.5)
 
         return {
             "version": "v2",
+            **project.details(),
             "width": settings.width,
             "height": settings.height,
             "duration": total_duration,

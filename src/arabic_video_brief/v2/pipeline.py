@@ -349,6 +349,9 @@ def process_source_v2(
                 "manifest": str(manifest_path),
             },
         }
+        from ..whiteboard import finalize_package
+        finalize_package(final_video_path)
+        manifest["files"]["render_project"] = str(v2_dir / "render-project")
         write_json(manifest_path, manifest)
         return manifest
     finally:

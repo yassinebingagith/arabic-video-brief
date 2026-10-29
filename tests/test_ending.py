@@ -61,6 +61,9 @@ def test_rerender_reuses_saved_question_and_updates_manifest(tmp_path, monkeypat
 
     def fake_render(**kwargs):
         captured.update(kwargs)
+        project = tmp_path / "render-project"
+        project.mkdir(exist_ok=True)
+        (project / "project.json").write_text(json.dumps({"renderer": "python-whiteboard"}), encoding="utf-8")
         return {"version": version}
 
     target = ("arabic_video_brief.rerender.render_video" if version == "v1"
@@ -72,6 +75,7 @@ def test_rerender_reuses_saved_question_and_updates_manifest(tmp_path, monkeypat
     assert actual == QUESTION
     saved = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert saved["ending_question_ar"] == QUESTION
+    assert saved["files"]["render_project"] == str(tmp_path / "render-project")
     if version == "v2":
         assert (tmp_path / "conclusion-ar.txt").read_text(encoding="utf-8").strip() == QUESTION
         assert saved["conclusion"]["text"] == QUESTION

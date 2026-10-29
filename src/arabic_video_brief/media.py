@@ -24,25 +24,8 @@ class MediaInfo:
 
 
 def find_ffmpeg() -> str:
-    override = os.environ.get("FFMPEG_BINARY")
-    if override and Path(override).exists():
-        return override
-    bundled = Path(__file__).resolve().parents[2] / "bin" / "ffmpeg.exe"
-    if bundled.exists():
-        return str(bundled)
-    runtime_file = Path(__file__).resolve().parents[2] / ".runtime" / "render-runtime.json"
-    if runtime_file.is_file():
-        from .render_runtime import load_render_runtime
-        return load_render_runtime()["FFMPEG_BIN"]
-    system = shutil.which("ffmpeg")
-    if system:
-        return system
-    try:
-        import imageio_ffmpeg
-
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except (ImportError, RuntimeError) as error:
-        raise RuntimeError("FFmpeg is unavailable; run scripts/setup.ps1") from error
+    from .media_tools import resolve_media_tools
+    return resolve_media_tools()["FFMPEG_BIN"]
 
 
 def _run(command: list[str], timeout: int = 600) -> subprocess.CompletedProcess[str]:
@@ -767,6 +750,7 @@ def render_text_page(
     header: str | None = None,
     sub_header: str | None = None,
     footer: str | None = None,
+    _layout: dict[str, Any] | None = None,
 ) -> int:
     from PIL import Image, ImageDraw, ImageFont
     import arabic_reshaper
@@ -942,6 +926,9 @@ def render_text_page(
         draw.text((x_pos, cur_y), s_vis, font=sub_font, fill="#A0A0A0")
         cur_y += (s_box[3] - s_box[1]) + (12 if has_frame else 20)
 
+    if _layout is not None:
+        _layout.update(base=image.copy(), font_size=font_size)
+    rendered_lines: list[list[dict[str, Any]]] = []
     # Render highlight pills on overlay layer if highlights are present
     has_any_hl = any("<hl>" in line for line in lines)
     if has_any_hl:
@@ -1021,6 +1008,7 @@ def render_text_page(
             width = bounds[2] - bounds[0]
             x_pos = (zone_mid - width // 2) if has_frame else (content_right - width)
             draw.text((x_pos, cur_y), visual_line, font=font, fill="#F8FAFC")
+            rendered_lines.append([{"text":logical_line,"vis":visual_line,"font":font,"is_hl":False,"width":float(draw.textlength(visual_line,font=font)),"x":x_pos,"y":cur_y}])
             cur_y += line_height
 
     if footer and f_vis and footer_font:
@@ -1030,6 +1018,8 @@ def render_text_page(
         x_pos = (zone_mid - f_w // 2) if has_frame else ((settings.width - f_w) // 2)
         draw.text((x_pos, cur_y), f_vis, font=footer_font, fill="#38BDF8")
 
+    if _layout is not None:
+        _layout["lines"] = rendered_lines
     image.save(output, format="PNG")
     return font.size
 
@@ -1254,21 +1244,14 @@ def render_video(
         if display_headline:
             display_headline = sanitize_display_text(display_headline)
 
-        font_one = render_text_page(
-            page_one,
-            page_one_png,
-            settings,
-            main_title=display_headline,
-            header="فيديوهات وجب مشاهدتها على اليوتيوب",
-            sub_header=f"النوع: {category}",
-        )
+        from .whiteboard import WhiteboardProject
+        project = WhiteboardProject(output,settings,"v1",source,thumbnail,[page_one,sanitize_v1_summary_text(page_two)],
+            metadata=metadata,selected_clip=selected_clip,title=display_headline or "",ending=ending_question)
+        project.ffmpeg = ffmpeg
+        page_one_png = project.page(1,page_one,0,page_duration,title=display_headline,category=category)
         page_two_clean = sanitize_v1_summary_text(page_two)
-        font_two = render_text_page(
-            page_two_clean,
-            page_two_png,
-            settings,
-            footer=None,
-        )
+        page_two_png = project.page(2,page_two_clean,page_duration,reading_end)
+        font_one,font_two = project.data["font_sizes"]
         render_v1_cta_page(
             cta_page_png,
             settings,
@@ -1323,8 +1306,8 @@ def render_video(
         # Page 2: 15.0s to 30.0s
         # CTA Page: 30.0s to 38.0s
         filter_str = (
-            f"[1:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page1];"
-            f"[2:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page2];"
+            f"[1:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS[page1];"
+            f"[2:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{page_duration}/TB[page2];"
             f"[3:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[page_cta];"
             f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base];"
             f"[base][page1]overlay=0:0:enable='lt(t,{page_duration:.1f})'[p1];"
@@ -1498,11 +1481,13 @@ def render_video(
                 "-movflags", "+faststart", "-y", str(output),
             ])
 
+        project.finish(command_final,output,top_path,cta_page_png,music_track,outro_voice)
         _run(command_final, timeout=900)
 
     final_info = probe_media(output, ffmpeg)
     return {
         "version": "v1",
+        **project.details(),
         "ending_question_ar": ending_question,
         "timeline": {"page_1": [0, page_duration], "page_2": [page_duration, reading_end], "ending": [reading_end, total_duration]},
         "width": final_info.width,

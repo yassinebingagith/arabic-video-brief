@@ -435,6 +435,9 @@ def process_source(
                 "manifest": str(manifest_path),
             },
         }
+        from .whiteboard import finalize_package
+        finalize_package(final_path)
+        manifest["files"]["render_project"] = str(item_dir / "render-project")
         write_json(manifest_path, manifest)
         return manifest
     finally:
