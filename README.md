@@ -28,32 +28,23 @@ An automated production and multi-platform publishing engine for creating V1 (38
 ## 🛠️ Installation & Setup
 
 ### 1. Prerequisites
-
-- Python **3.11+** on Windows, macOS or Linux.
-- Internet access for the initial Python dependency/media-tool download.
-
-V1 and V2 render whiteboard writing directly with Python, Pillow, NumPy, OpenCV and FFmpeg. No Node.js or rendering browser is required. Setup finds FFmpeg/FFprobe locally or downloads them using the Python media bootstrap.
+- Python 3.11+
+- FFmpeg (can be installed locally or placed in `bin/ffmpeg.exe`)
+- Google Chrome (for automated publishing)
 
 ### 2. Clone & Install Dependencies
-
 ```powershell
-git clone https://github.com/yassinebingagith/arabic-video-brief.git
+git clone https://github.com/<your-username>/arabic-video-brief.git
 cd arabic-video-brief
-python scripts/setup.py
+
+# Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Install requirements
+pip install -e .
+playwright install chromium
 ```
-
-On macOS/Linux use `python3` when needed. Windows users can also run `./scripts/setup.ps1`. Activate `.venv` using `.venv\Scripts\Activate.ps1` on Windows or `source .venv/bin/activate` on macOS/Linux. Setup creates `.env` only when absent. API keys are needed for analysis, not for local rendering or saved-project rerenders.
-
-Add `--with-tests` for tests. Optional publishing automation uses `--with-publisher`, which installs its own publishing browser. It is independent of the video renderer.
-
-Check media tools and render synthetic V1/V2 examples:
-
-```powershell
-python scripts/media_doctor.py
-python scripts/python_whiteboard_smoke.py
-```
-
-Normal V1/V2 runs now create animated reading pages automatically. Each episode retains a complete `render-project/` with editable Arabic text, stroke and marker timing, source footage, font, branding, selected audio, page intermediates and bundled Python rerender code. See [the editable whiteboard workflow](references/python-whiteboard.md). GitHub Actions includes Windows/macOS/Linux setup and rendering checks.
 
 ### 3. Configure Environment Variables
 Copy the `.env.example` template to `.env`:
@@ -196,3 +187,7 @@ MIT License
 For the V3 browser/MCP sequence, download verification and interruption recovery, see [the execution procedure](references/v3-browser-execution.md). `python tools/v3_save_image.py next --folder "outputs/<source>/v3"` reports the next local action without generating anything. The agent operates the connected browser; there is no standalone unattended browser service or implemented image API adapter in this helper.
 
 A confirmed successful live publication on any one platform automatically prefixes the episode folder with `Done-` after the upload queue closes. Publishing from its `v2/` child marks the parent episode. JSON paths inside the episode are updated; the returned report contains the new folder. Drafts, scheduled-only uploads and failures do not receive this prefix. `Done-` means at least one platform published; consult `publish_status.json` before posting to other platforms. Manual uploads outside this pipeline are not automatically detected.
+
+## Python/FFmpeg reading-page animation
+
+Source acquisition, analysis, Arabic writing, music choices, geometry and export metadata follow commit `914a574a5a0cdfecea09ea1b2430b32573941709`. Only the reading pages use progressive Python glyph strokes, gold marker sweeps and page fades. V1 is 38 seconds; V2 adds 2 seconds per page for a 50.2-second total. Install renderer dependencies with `python scripts/setup.py`. Each episode retains `render-project/` inside its own output folder. See [editable rendering](references/python-whiteboard.md).

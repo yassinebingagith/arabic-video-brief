@@ -12,9 +12,9 @@ def main() -> int:
     configured = os.environ.get("ARABIC_VIDEO_BRIEF_PROJECT")
     project_root = Path(configured) if configured else local_root
     if not (project_root / "src" / "arabic_video_brief").exists():
-        raise SystemExit(f"Project source is missing at {project_root}. Check ARABIC_VIDEO_BRIEF_PROJECT or use a complete repository checkout.")
+        project_root = Path(r"D:\Automation\arabic-video-brief")
 
-    venv_python = project_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    venv_python = project_root / ".venv" / "Scripts" / "python.exe"
     if venv_python.exists() and Path(sys.executable).resolve() != venv_python.resolve():
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"

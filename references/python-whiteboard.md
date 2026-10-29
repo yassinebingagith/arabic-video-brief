@@ -8,6 +8,8 @@ Run `python scripts/setup.py` once (Python 3.11+). Pillow, NumPy and OpenCV are 
 
 ## Production contract
 
+The animation change is confined to rendering existing authored reading pages. Keep source downloading, the chosen analysis provider, source analysis/transcript handling, Arabic writing, thumbnails, publishing, music and export metadata as in baseline commit `914a574a5a0cdfecea09ea1b2430b32573941709`. Rendering derives word timings from the written page text and page duration; it must not add source-audio extraction, speech-to-text, forced alignment or timestamped transcription. Do not create an `artifact/` or `artifacts/` delivery folder for this renderer. Save all editable animation files in the episode's existing output folder under `render-project/`. Existing source-analysis work remains independent of this page-rendering step.
+
 Use the existing `avbrief run ... --version v1|v2` and `avbrief rerender <episode-folder>` commands with the normal required editorial choices. Both production functions call WhiteboardProject directly. V1 is 38 seconds (15/15/8); V2 is 50.2 seconds (12.8/9.8/9.8/9.8/8). Keep full copy and two or three gold phrases per page; whole highlighted phrases and attached Arabic prefixes stay together on a line. Text is shaped for Arabic before deriving glyph masks and stroke paths. Strokes are revealed across the page's reading interval with brief punctuation pauses; completed words remain visible. Markers sweep right to left after their phrases are written. The source video and existing audio/export composition remain in their original renderers.
 
 ## Complete editable delivery
