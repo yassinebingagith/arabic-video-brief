@@ -56,14 +56,15 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
         temp_dir = Path(temp_dir_str)
 
         print(f"[Rerender] Downloading source clip for: {source} ...")
-        downloaded = download_youtube(source, temp_dir, download_seconds=40.0)
+        download_secs = 70.0 if is_v2 else 40.0
+        downloaded = download_youtube(source, temp_dir, download_seconds=download_secs)
         local_video = Path(downloaded["video_path"])
         thumbnail = Path(downloaded["thumbnail_path"]) if downloaded.get("thumbnail_path") else None
 
         output_video_path = folder / "brief.mp4"
 
         if is_v2:
-            print("[Rerender] Re-rendering V2 format (50.2s with 8s question ending and outro voiceover)...")
+            print("[Rerender] Re-rendering V2 format (59.8s with 2.8s gamified 100% overcharge outro)...")
             from .v2.editorial import V2EditorialPackage, HookCandidate
             from .v2.renderer import render_v2_video
 
@@ -105,7 +106,10 @@ def rerender_folder(folder_path: Path | str, settings: Settings | None = None) -
             )
 
             hook_audio_path = folder / "hook-voice.mp3"
-            selected_clip = manifest.get("selected_clip", {"start_seconds": 0.0, "end_seconds": settings.v2_page_boundaries[-1] - settings.hook_duration})
+            clip_cfg = manifest.get("selected_clip") or {}
+            clip_start = float(clip_cfg.get("start_seconds", 0.0))
+            clip_end = max(float(clip_cfg.get("end_seconds", 0.0)), clip_start + settings.v2_page_boundaries[-1] - settings.hook_duration)
+            selected_clip = {"start_seconds": clip_start, "end_seconds": clip_end}
 
             render_details = render_v2_video(
                 source=local_video,

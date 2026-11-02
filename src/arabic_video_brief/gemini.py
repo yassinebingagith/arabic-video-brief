@@ -30,7 +30,7 @@ ANALYSIS_SCHEMA: dict[str, Any] = {
         "post_title_ar": {"type": "string"},
         "summary_ar": {"type": "string"},
         "post_description": {"type": "string"},
-        "pages": {"type": "array", "items": {"type": "string"}, "minItems": 4, "maxItems": 4},
+        "pages": {"type": "array", "items": {"type": "string"}, "minItems": 5, "maxItems": 5},
         "thumbnail_hook_ar": {"type": "string"},
         "ending_text_ar": {"type": "string"},
         "ending_question_ar": {"type": "string"},

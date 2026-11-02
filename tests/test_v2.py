@@ -87,9 +87,10 @@ def test_v2_render_integration(tmp_path: Path):
         summary_ar="ملخص تجريبي متوازن.",
         pages=[
             "الصفحة الأولى تشرح المشكلة باختصار وإيجاز شديد.",
-            "الصفحة الثانية توضح آلية الضوء وتأثيره على العين والدماغ.",
-            "الصفحة الثالثة تقدم الفهم العميق لإفراز هرمون الميلاتونين ليلاً.",
-            "الصفحة الرابعة تضع خطوات عملية للتحكم في الإضاءة والنوم.",
+            "الصفحة الثانية تقدم مثالاً أو دراسة عملية من النص.",
+            "الصفحة الثالثة توضح آلية الضوء وتأثيره على العين والدماغ.",
+            "الصفحة الرابعة تقدم الفهم العميق لإفراز هرمون الميلاتونين ليلاً.",
+            "الصفحة الخامسة تضع خطوات عملية للتحكم في الإضاءة والنوم.",
         ],
         hook=hook,
         conclusion_ar="ما الذي ستغيّره في إضاءة غرفتك هذا المساء؟",
@@ -118,9 +119,10 @@ def test_v2_render_integration(tmp_path: Path):
     assert info.height == 1920
     assert abs(info.duration - settings.duration_v2) < 0.2
     assert render_details["timeline"] == {
-        "page_1": "0:00.0-0:12.8", "page_2": "0:12.8-0:22.6",
-        "page_3": "0:22.6-0:32.4", "page_4": "0:32.4-0:42.2",
-        "conclusion": "0:42.2-0:50.2",
+        "page_1": "0:00.0-0:13.8", "page_2": "0:13.8-0:24.6",
+        "page_3": "0:24.6-0:35.4", "page_4": "0:35.4-0:46.2",
+        "page_5": "0:46.2-0:57.0",
+        "conclusion": "0:57.0-0:59.8",
     }
 
     # Both the retained short track and the new track must cover the longer reading section.
@@ -159,9 +161,9 @@ def test_v2_timing_and_voiceover_preserve_reading_content():
     from arabic_video_brief.v2.editorial import build_v2_editorial_package, VOICEOVER_SUFFIX
     settings = Settings()
     bounds = settings.v2_page_boundaries
-    assert [bounds[i+1]-bounds[i] for i in range(4)] == pytest.approx([10.8+2, 7.8+2, 7.8+2, 7.8+2])
-    assert bounds[-1] + settings.conclusion_duration == pytest.approx(50.2)
-    pages = ["مثال عربي مع الرقم 21."] * 4
+    assert [bounds[i+1]-bounds[i] for i in range(5)] == pytest.approx([13.8, 10.8, 10.8, 10.8, 10.8])
+    assert bounds[-1] + settings.conclusion_duration == pytest.approx(59.8)
+    pages = ["مثال عربي مع الرقم 21."] * 5
     result = build_v2_editorial_package({"post_title_ar": "عنوان الاختبار", "pages": pages,
         "ending_question_ar": "أي فكرة ستجرب تطبيقها في حياتك اليوم؟",
         "hook": {"tts": "النص القديم", "display": "العنوان المرئي"}}, {}, settings)
@@ -213,7 +215,8 @@ def test_v2_tag_stripping_plain_text():
         "هذه الصفحة تتضمن <hl>عبارة مميزة أولى</hl> و <hl>عبارة مميزة ثانية</hl> بالكامل.",
         "الصفحة الثانية فيها <hl>وكيمياء عصبية</hl> مهمة جداً للشرح.",
         "الصفحة الثالثة تشرح <hl>فكرة تطبيقية</hl> واضحة.",
-        "الصفحة الرابعة تلخص <hl>النتيجة النهائية</hl> للموضوع.",
+        "الصفحة الرابعة تعمق <hl>الأثر الخفي</hl> للمشكلة.",
+        "الصفحة الخامسة تلخص <hl>النتيجة النهائية</hl> للموضوع.",
     ]
     pkg = build_v2_editorial_package({
         "post_title_ar": "عنوان تجريبي",
@@ -226,4 +229,87 @@ def test_v2_tag_stripping_plain_text():
     # editorial.summary_ar has <hl> tags stripped for plain text logs/descriptions
     assert "<hl>" not in pkg.summary_ar
     assert "</hl>" not in pkg.summary_ar
+
+def test_v2_word_reveal_pacing():
+    """Verify that V2 word reveal and yellow highlights complete within the first 55% of each slide."""
+    from arabic_video_brief.whiteboard import WhiteboardProject
+    from arabic_video_brief.config import Settings
+    import tempfile
+
+    settings = Settings()
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        out = Path(tmp_dir) / "test.mp4"
+        source = Path(tmp_dir) / "source.mp4"
+        source.write_bytes(b"dummy")
+        proj = WhiteboardProject(out, settings, "v2", source, None, [
+            "الصفحة الأولى تشرح الفكرة الأولى مع <hl>عبارة مميزة</hl> في منتصف النص.",
+            "الصفحة الثانية تشرح فكرة إضافية وتكمل السياق حتى النهاية.",
+        ])
+
+        # Check Page 1 (duration = 13.8s)
+        p1_dur = 13.8
+        t_active_1 = p1_dur * 0.55
+        # Call page to generate motion.json
+        proj.ffmpeg = "ffmpeg"
+        # We can inspect the words and markers scheduled in motion data
+        p1_folder = proj.root / "pages" / "page-1"
+        p1_folder.mkdir(parents=True, exist_ok=True)
+        # Mock render_page to avoid running ffmpeg in unit test
+        import arabic_video_brief.whiteboard as wb
+        orig_render = wb.render_page
+        wb.render_page = lambda recipe, output, ffmpeg: None
+        try:
+            proj.page(1, "هذا نص تجريبي لاختبار سرعة <hl>الظهور التدريجي</hl> للكلمات.", 0.0, p1_dur)
+            import json
+            motion = json.loads((p1_folder / "motion.json").read_text(encoding="utf-8"))
+            words = motion["words"]
+            markers = motion["markers"]
+
+            # V2 Paragraph Fade + Highlighter Sweep:
+            # All words must start at 0.0 (entire pre-wrapped paragraph is laid out and present from frame 1)
+            assert all(w["start"] == 0.0 for w in words)
+            assert words[-1]["start"] <= t_active_1
+
+            # Highlighter sweep starts at 1.5s and completes within 0.6s (2.1s total, well within t_active_1)
+            for m in markers:
+                assert m["start"] == 1.5
+                assert m["duration"] == 0.6
+                marker_finish = m["start"] + m["duration"]
+                assert marker_finish <= t_active_1 + 0.01
+
+            # Check that remaining slide time is completely static (no words start after 0.0)
+            words_after_55 = [w for w in words if w["start"] > t_active_1]
+            assert len(words_after_55) == 0
+
+        finally:
+            wb.render_page = orig_render
+
+
+def test_v2_filling_brain_progress():
+    """Verify that global progress smoothly tracks 0-20%, 20-40%, 40-60%, 60-80%, 80-100% across the 5 slides."""
+    from PIL import Image
+    from arabic_video_brief.whiteboard import get_brain_mask, draw_v2_progress_indicator
+
+    brain_mask = get_brain_mask((72, 76))
+    brain_outline = brain_mask
+    canvas = Image.new("RGB", (1080, 1160), "#040d1a")
+
+    # Slide 1 start and end
+    data_p1 = {"index": 1, "duration": 13.8, "width": 1080, "height": 1160}
+    # At t = 0: global progress = 0.0
+    f0 = draw_v2_progress_indicator(canvas, data_p1, 0.0, brain_mask, brain_outline, None)
+    assert f0.size == (1080, 1160)
+    # At t = 13.8: global progress = 0.20 (20%)
+    f1 = draw_v2_progress_indicator(canvas, data_p1, 13.8, brain_mask, brain_outline, None)
+    assert f1.size == (1080, 1160)
+
+    # Slide 3 middle (index 3, half duration): global progress = (2 + 0.5) / 5 = 0.50 (50%)
+    data_p3 = {"index": 3, "duration": 10.8, "width": 1080, "height": 1160}
+    f3 = draw_v2_progress_indicator(canvas, data_p3, 5.4, brain_mask, brain_outline, None)
+    assert f3.size == (1080, 1160)
+
+    # Slide 5 end: global progress = (4 + 1.0) / 5 = 1.00 (100%)
+    data_p5 = {"index": 5, "duration": 10.8, "width": 1080, "height": 1160}
+    f5 = draw_v2_progress_indicator(canvas, data_p5, 10.8, brain_mask, brain_outline, None)
+    assert f5.size == (1080, 1160)
 

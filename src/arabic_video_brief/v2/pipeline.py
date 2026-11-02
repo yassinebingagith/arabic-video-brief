@@ -37,9 +37,9 @@ def process_source_v2(
     generate_deepdive: bool = False,
 ) -> dict[str, Any]:
     """
-    Processes a source into a V2 Arabic Video Brief (50.2s timeline):
+    Processes a source into a V2 Arabic Video Brief (59.8s timeline):
     - Dedicated hook with optional ElevenLabs TTS narration (graceful fallback)
-    - 4 sentence-aligned summary pages (35-40 words each)
+    - 5 sentence-aligned summary pages (30-40 words each)
     - Full-page conclusion & CTA with Capsule Fikr branding
     - Output files saved into isolated `outputs/<video-slug>/v2/` directory
     """
@@ -58,7 +58,7 @@ def process_source_v2(
     try:
         video_id = youtube_video_id(source)
         if video_id:
-            downloaded = _with_retries(lambda: download_youtube(source, work_dir, download_seconds=45.0))
+            downloaded = _with_retries(lambda: download_youtube(source, work_dir, download_seconds=70.0))
             local_video = Path(downloaded["video_path"])
             thumbnail = Path(downloaded["thumbnail_path"]) if downloaded.get("thumbnail_path") else None
             title = str(downloaded.get("title") or "YouTube video")
@@ -213,7 +213,7 @@ def process_source_v2(
 
         summary_pages_path = v2_dir / "summary-pages.json"
         bounds = settings.v2_page_boundaries
-        pages_timings = [f"{bounds[i]:.1f}s - {bounds[i + 1]:.1f}s" for i in range(4)]
+        pages_timings = [f"{bounds[i]:.1f}s - {bounds[i + 1]:.1f}s" for i in range(len(editorial.pages))]
 
         pages_payload = [
             {

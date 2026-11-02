@@ -77,9 +77,9 @@ def test_kie_missing_reference_fails_before_submitting_unrelated_image(tmp_path,
 
 
 @pytest.mark.parametrize("footer", [QUESTION, ACTION])
-def test_v2_authored_footer_and_four_beats_survive_without_extra_model_call(monkeypatch, footer):
+def test_v2_authored_footer_and_five_beats_survive_without_extra_model_call(monkeypatch, footer):
     monkeypatch.setattr("arabic_video_brief.v2.editorial.call_llm", no_model)
-    pages = ["مثال محدد يفتح الفكرة.", "شرح الآلية وراء المثال.", "مقارنة تضيف معنى جديداً.", "حدود الفكرة ونتائجها."]
+    pages = ["مثال محدد يفتح الفكرة.", "شاهد واقعي أو تجربة تثبت المعنى.", "شرح الآلية وراء المثال.", "مقارنة تضيف معنى جديداً.", "حدود الفكرة ونتائجها."]
     package = build_v2_editorial_package({
         "post_title_ar": "عنوان المصدر", "summary_ar": "ملخص مختلف قديم.",
         "pages": pages, "ending_text_ar": footer, "thumbnail_hook_ar": "متى تصبح قناعتك فخاً؟",
@@ -102,7 +102,7 @@ def test_v2_action_rerender_uses_canonical_footer(tmp_path, monkeypatch):
     (tmp_path / "manifest.json").write_text(json.dumps({"source": "https://www.youtube.com/watch?v=abcdefghijk", "render": {"version": "v2"}}), encoding="utf-8")
     (tmp_path / "ending-text-ar.txt").write_text(ACTION, encoding="utf-8")
     (tmp_path / "ending-question-ar.txt").write_text(QUESTION, encoding="utf-8")
-    (tmp_path / "summary-pages.json").write_text(json.dumps([{"text": "مثال."}] * 4), encoding="utf-8")
+    (tmp_path / "summary-pages.json").write_text(json.dumps([{"text": "مثال."}] * 5), encoding="utf-8")
     monkeypatch.setattr("arabic_video_brief.v2.editorial.call_llm", no_model)
     monkeypatch.setattr("arabic_video_brief.rerender.download_youtube", lambda *a, **kw: {"video_path": str(tmp_path / "source.mp4")})
     captured = {}
@@ -131,8 +131,8 @@ def test_all_analysis_providers_request_explanatory_pages_and_distinct_cover_hoo
     from arabic_video_brief import gemini, vyceai, seekai, apinex
     for module in (gemini, vyceai, seekai, apinex):
         assert "Every page advances understanding" in module.PROMPT
-        assert "`pages`: exactly four strings" in module.PROMPT
+        assert "`pages`: exactly five strings" in module.PROMPT
         assert "`thumbnail_hook_ar`" in module.PROMPT
         assert "`ending_text_ar`" in module.PROMPT
         assert "golden rules" not in module.PROMPT
-    assert gemini.ANALYSIS_SCHEMA["properties"]["pages"]["maxItems"] == 4
+    assert gemini.ANALYSIS_SCHEMA["properties"]["pages"]["maxItems"] == 5

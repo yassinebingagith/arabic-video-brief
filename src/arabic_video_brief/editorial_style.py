@@ -28,19 +28,23 @@ SUMMARY_SPEC = """
    CORE EXPLANATORY STYLE below. Deliver an explanation on page 1, not just a teaser;
    page 2 develops the idea rather than repeating it. No headings or bullet lists.
    CRITICAL HIGHLIGHT RULE (V1 & V2): In each paragraph of summary_ar (for V1) and on each
-   of the 4 pages (for V2), wrap 2 to 3 key phrases (each 2–3 words long) inside <hl>...</hl> tags
+   of the 5 pages (for V2), wrap 2 to 3 key phrases (each 2–3 words long) inside <hl>...</hl> tags
    (book highlighter style, e.g. <hl>وكيمياء عصبية تختفي</hl>).
    Always keep attached single-letter Arabic prefixes (و, ف, ب, ل, ك) INSIDE the <hl> tag
    (e.g., <hl>وكيمياء عصبية تختفي</hl>, never و<hl>كيمياء عصبية تختفي</hl>).
    STRICT NO-CTA RULE IN SUMMARY: Absolutely NEVER conclude summary_ar or page 2 with meta-CTAs or
    phrases pointing to the description (such as 'المزيد من التفاصيل في صندوق الوصف' or 'اقرأ الوصف');
    the final 8-second video ending screen already handles all calls to action.
-   Think in four linked explanatory beats within these two paragraphs so V2 can
-   give each beat its own page. End sentences at meaningful beat boundaries.
-   Also return `pages`: exactly four strings of 30–44 words each for V2. Write each
+   Also return `pages`: exactly five strings of 30–40 words each for V2. Write each
    as a complete explanatory beat with its own new information, using the same
-   source-grounded angle as summary_ar. Total 140–160 words. These are authored
-   pages, not arbitrary equal-sized cuts; no repeated introductions or conclusions.
+   source-grounded angle as summary_ar. Total 160–180 words.
+   Structure the 5 beats as follows:
+   - Page 1: Everyday dilemma / relatable trap / intuitive entry point that hooks the viewer.
+   - Page 2: Dedicated Concrete Anchor: A real quote, speaker's personal story/anecdote, scientific experiment, or sharp paradox directly from the source transcript. Ground the topic in something tangible and specific before explaining theory.
+   - Page 3: Core Mechanism / Root Cause: How or why the phenomenon happens in plain, precise terms.
+   - Page 4: Deepening Insight / Framework / Hidden Cost: Broaden the impact or reveal what happens when ignored.
+   - Page 5: Actionable Shift / Practical Takeaway: A concrete behavioral pivot or rule for real life.
+   These are authored pages, not arbitrary equal-sized cuts; no repeated introductions or conclusions.
    Return `thumbnail_hook_ar`: one engaging Arabic thumbnail headline, preferably
    3–8 words, maximum 10 words / 70 characters. Choose a specific unresolved question,
    surprising contrast or consequence supported by the source, without exaggeration.

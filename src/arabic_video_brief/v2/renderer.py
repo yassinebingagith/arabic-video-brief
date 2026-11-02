@@ -364,29 +364,32 @@ def render_v2_conclusion_page(
     settings: Settings,
 ) -> None:
     """
-    Renders the question & CTA ending (1080x1920) for 0:42.2-0:50.2.
-    The top 760px retains the static source card (matching user instruction).
-    The lower panel displays the topic-specific question (Gold words), contextual save CTA,
-    description CTA, and a larger Capsule Fikr logo at the bottom.
+    Renders the gamified '100% Brain Overcharge' outro ending (1080x1920) for 0:57.0-0:59.8 (2.8s).
+    The top 760px retains the static source card / thumbnail with seamless background.
+    The lower panel displays:
+      1. Yellow conclusion question title at top
+      2. 1.12x scaled 100% full gold brain with dual aura/bloom effect
+      3. Gamified achievement badge text in crisp Arabic:
+         "⚡ اكتمل شحن الفكرة 100% — تركيزك أعمق من 90% من المتصفحين! الشرح الكامل في الوصف 👇"
     """
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont, ImageFilter
+    from ..media import create_v2_summary_background, _display_text, _balance_wrap
+    from ..whiteboard import get_brain_mask
 
-    image = Image.new("RGB", (settings.width, settings.height), "#000000")
+    image = create_v2_summary_background(settings.width, settings.height, settings.top_height)
 
     # Paste the static source card in the top panel (1080x760)
-    if source_card_path.exists():
+    if source_card_path and source_card_path.exists():
         with Image.open(source_card_path) as card_img:
             image.paste(card_img.convert("RGB"), (0, 0))
 
     draw = ImageDraw.Draw(image)
 
     panel_top = settings.top_height
-    # Strict platform safe margins (15% left & right margin = 162px each -> max content width = 756px)
-    # This completely prevents any overlap with TikTok / Reels / Shorts action buttons.
     side_safe_margin = int(settings.width * 0.15)  # 162px
     max_safe_width = settings.width - (2 * side_safe_margin)  # 756px
 
-    # 1. Main ending question (4–18 words, <=140 characters).
+    # 1. Main ending question title in yellow (#FFD700) with subtle drop shadow
     conc_size = 46
     conc_font = ImageFont.truetype(str(settings.font_path), conc_size)
     try:
@@ -394,7 +397,7 @@ def render_v2_conclusion_page(
     except (AttributeError, OSError, ValueError):
         pass
 
-    clean_conc = conclusion_text.replace("{", "").replace("}", "")
+    clean_conc = conclusion_text.replace("{", "").replace("}", "").strip()
     conc_lines = _balance_wrap(clean_conc, conc_font, max_safe_width)
     while len(conc_lines) > 3 and conc_size > 32:
         conc_size -= 2
@@ -407,166 +410,135 @@ def render_v2_conclusion_page(
     conc_line_h = math.ceil(conc_size * 1.45)
     conc_y = panel_top + 45
 
-    clean_highlights = [h.replace("{", "").replace("}", "").strip() for h in conclusion_highlights]
     for line in conc_lines:
         vis = _display_text(line)
         box = draw.textbbox((0, 0), vis, font=conc_font)
         tw = box[2] - box[0]
         tx = (settings.width - tw) // 2
 
-        is_hl = clean_conc.strip().endswith("؟") or any(h in line for h in clean_highlights if h)
-        col = "#F5C518" if is_hl else "#FFFFFF"
-
         draw.text((tx + 2, conc_y + 2), vis, font=conc_font, fill="#000000")
-        draw.text((tx, conc_y), vis, font=conc_font, fill=col)
+        draw.text((tx, conc_y), vis, font=conc_font, fill="#FFD700")
         conc_y += conc_line_h
 
-    # 2. Action Pill Box (Save / Share / Follow): Clean, high contrast, enlarged font, NO repetitive description
-    # Clean text to strictly avoid any description duplication
-    clean_save_cta = save_cta.strip()
-    # Remove any stray description phrases if ever passed
-    clean_save_cta = re.sub(r"(?:السر الأهم|الخطوات التطبيقية|في الوصف|بالأسفل|👇).*", "", clean_save_cta).strip()
-    if not clean_save_cta or len(clean_save_cta) < 10:
-        clean_save_cta = "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد"
+    # 2. 100% Brain Overcharge Icon (scaled 1.12x, locked at 100% gold, with bright aura bloom)
+    bw, bh = 82, 86
+    brain_mask = get_brain_mask((bw, bh))
 
-    cur_save_size = 34
-    save_font = ImageFont.truetype(str(settings.font_path), cur_save_size)
+    pad = 60
+    aura_size = (bw + pad * 2, bh + pad * 2)
+    aura_layer = Image.new("RGBA", aura_size, (0, 0, 0, 0))
+    big_glow_mask = Image.new("L", aura_size, 0)
+    big_glow_mask.paste(brain_mask, (pad, pad))
+
+    # Outer warm gold bloom
+    big_glow = big_glow_mask.filter(ImageFilter.GaussianBlur(24))
+    gold_fill = Image.new("RGBA", aura_size, (255, 215, 0, 160))
+    aura_layer.paste(gold_fill, (0, 0), big_glow)
+
+    # Core intense white-gold bloom
+    core_glow = big_glow_mask.filter(ImageFilter.GaussianBlur(10))
+    white_fill = Image.new("RGBA", aura_size, (255, 255, 230, 220))
+    aura_layer.paste(white_fill, (0, 0), core_glow)
+
+    cx = settings.width // 2
+    brain_y = conc_y + 70
+    bx = cx - bw // 2
+    by = brain_y
+
+    image.paste(aura_layer, (cx - aura_size[0] // 2, by + bh // 2 - aura_size[1] // 2), aura_layer)
+    gold_brain = Image.new("RGBA", (bw, bh), (255, 215, 0, 255))
+    image.paste(gold_brain, (bx, by), brain_mask)
+
+    outline = brain_mask.filter(ImageFilter.FIND_EDGES).filter(ImageFilter.GaussianBlur(0.8))
+    outline_img = Image.new("RGBA", (bw, bh), (255, 255, 255, 240))
+    image.paste(outline_img, (bx, by), outline)
+
+    # 3. Achievement Badge text
+    # "⚡ اكتمل شحن الفكرة 100% — تركيزك أعمق من 90% من المتصفحين! الشرح الكامل في الوصف 👇"
+    badge_y = by + bh + 45
+
+    # Header gold pill: "⚡ اكتمل شحن الفكرة 100%"
+    h_font = ImageFont.truetype(str(settings.font_path), 34)
     try:
-        save_font.set_variation_by_name("Bold")
+        h_font.set_variation_by_name("Bold")
     except (AttributeError, OSError, ValueError):
         pass
+    h_text = "⚡ اكتمل شحن الفكرة 100%"
+    h_vis = _display_text(h_text)
+    h_box = draw.textbbox((0, 0), h_vis, font=h_font)
+    hw, hh = h_box[2] - h_box[0], h_box[3] - h_box[1]
 
-    save_vis = _display_text(clean_save_cta)
-    s_box = draw.textbbox((0, 0), save_vis, font=save_font)
-    sw = s_box[2] - s_box[0]
+    h_pill_w = hw + 56
+    h_pill_h = hh + 24
+    h_pill_x = (settings.width - h_pill_w) // 2
 
-    # Auto-scale font down to minimum 24px so it stays strictly within the 15% safe margin (max_safe_width - 40)
-    target_pill_text_max = max_safe_width - 48
-    while sw > target_pill_text_max and cur_save_size > 24:
-        cur_save_size -= 1
-        save_font = ImageFont.truetype(str(settings.font_path), cur_save_size)
-        try:
-            save_font.set_variation_by_name("Bold")
-        except (AttributeError, OSError, ValueError):
-            pass
-        s_box = draw.textbbox((0, 0), save_vis, font=save_font)
-        sw = s_box[2] - s_box[0]
-
-    save_pill_w = min(sw + 56, max_safe_width)
-    save_pill_h = 66
-    save_pill_x = (settings.width - save_pill_w) // 2
-    save_pill_y = conc_y + 32
-
-    # High-contrast outline pill
     draw.rounded_rectangle(
-        (save_pill_x, save_pill_y, save_pill_x + save_pill_w, save_pill_y + save_pill_h),
-        radius=save_pill_h // 2,
-        fill="#141418",
-        outline="#F5C518",
+        (h_pill_x - 2, badge_y - 2, h_pill_x + h_pill_w + 2, badge_y + h_pill_h + 2),
+        radius=h_pill_h // 2,
+        fill="#5A4700",
+    )
+    draw.rounded_rectangle(
+        (h_pill_x, badge_y, h_pill_x + h_pill_w, badge_y + h_pill_h),
+        radius=h_pill_h // 2,
+        fill="#F5C518",
+        outline="#FFF3B0",
         width=2,
     )
     draw.text(
-        (save_pill_x + (save_pill_w - sw) // 2, save_pill_y + (save_pill_h - (s_box[3] - s_box[1])) // 2 - s_box[1]),
-        save_vis,
-        font=save_font,
-        fill="#FFFFFF",
-    )
-
-    # 3. Capsule Fikr Logo & Brand Label
-    logo_size = 145
-    logo_x = (settings.width - logo_size) // 2
-    logo_y = save_pill_y + save_pill_h + 30
-
-    if avatar_path and avatar_path.exists():
-        try:
-            av_img = Image.open(avatar_path).convert("RGBA")
-            av_img = av_img.resize((logo_size, logo_size), Image.Resampling.LANCZOS)
-            mask = Image.new("L", (logo_size, logo_size), 0)
-            draw_mask = ImageDraw.Draw(mask)
-            draw_mask.ellipse((0, 0, logo_size, logo_size), fill=255)
-            image.paste(av_img, (logo_x, logo_y), mask)
-            # Bold Gold outline ring around the logo
-            draw.ellipse((logo_x, logo_y, logo_x + logo_size, logo_y + logo_size), outline="#F5C518", width=4)
-        except Exception as err:
-            logger.warning("Failed to render avatar logo: %s", err)
-
-    # Brand text label under logo
-    brand_font = ImageFont.truetype(str(settings.font_path), 30)
-    try:
-        brand_font.set_variation_by_name("Bold")
-    except (AttributeError, OSError, ValueError):
-        pass
-    brand_vis = _display_text("كبسولة فكر")
-    b_box = draw.textbbox((0, 0), brand_vis, font=brand_font)
-    bw = b_box[2] - b_box[0]
-    brand_y = logo_y + logo_size + 10
-    draw.text(((settings.width - bw) // 2, brand_y), brand_vis, font=brand_font, fill="#F5C518")
-
-    # 4. Primary Description CTA: Filled Glowing Gold Badge within 15% safe margin
-    clean_desc_cta = desc_cta.replace("👇", "").strip()
-    if not clean_desc_cta:
-        clean_desc_cta = "السر الأهم والخطوات التطبيقية في الوصف بالأسفل"
-
-    cur_desc_size = 36
-    desc_font = ImageFont.truetype(str(settings.font_path), cur_desc_size)
-    try:
-        desc_font.set_variation_by_name("Bold")
-    except (AttributeError, OSError, ValueError):
-        pass
-
-    d_vis = _display_text(clean_desc_cta)
-    d_box = draw.textbbox((0, 0), d_vis, font=desc_font)
-    dw = d_box[2] - d_box[0]
-
-    # Auto-scale font so the entire gold badge fits comfortably inside the 15% safe margin
-    target_badge_text_max = max_safe_width - 64
-    while dw > target_badge_text_max and cur_desc_size > 26:
-        cur_desc_size -= 1
-        desc_font = ImageFont.truetype(str(settings.font_path), cur_desc_size)
-        try:
-            desc_font.set_variation_by_name("Bold")
-        except (AttributeError, OSError, ValueError):
-            pass
-        d_box = draw.textbbox((0, 0), d_vis, font=desc_font)
-        dw = d_box[2] - d_box[0]
-
-    desc_pill_w = min(dw + 64, max_safe_width)
-    desc_pill_h = 88
-    desc_pill_x = (settings.width - desc_pill_w) // 2
-    desc_pill_y = max(brand_y + 42, 1340)
-
-    # Subtle outer glow shadow for high contrast
-    draw.rounded_rectangle(
-        (desc_pill_x - 3, desc_pill_y - 3, desc_pill_x + desc_pill_w + 3, desc_pill_y + desc_pill_h + 3),
-        radius=desc_pill_h // 2,
-        fill="#5A4700",
-    )
-    # Main filled Gold badge
-    draw.rounded_rectangle(
-        (desc_pill_x, desc_pill_y, desc_pill_x + desc_pill_w, desc_pill_y + desc_pill_h),
-        radius=desc_pill_h // 2,
-        fill="#F5C518",
-        outline="#FFE066",
-        width=3,
-    )
-    # Bold Black text on Gold badge
-    draw.text(
-        (desc_pill_x + (desc_pill_w - dw) // 2, desc_pill_y + (desc_pill_h - (d_box[3] - d_box[1])) // 2 - d_box[1]),
-        d_vis,
-        font=desc_font,
+        (h_pill_x + (h_pill_w - hw) // 2, badge_y + (h_pill_h - hh) // 2 - h_box[1]),
+        h_vis,
+        font=h_font,
         fill="#000000",
     )
 
-    # 5. Prominent Downward pointing indicator chevron/arrow
-    arrow_x = settings.width // 2
-    arrow_y = desc_pill_y + desc_pill_h + 14
-    draw.line([(arrow_x, arrow_y), (arrow_x, arrow_y + 18)], fill="#F5C518", width=6)
-    draw.polygon([
-        (arrow_x - 16, arrow_y + 14),
-        (arrow_x + 16, arrow_y + 14),
-        (arrow_x, arrow_y + 32),
-    ], fill="#F5C518")
+    # Sub-card:
+    # "تركيزك أعمق من 90% من المتصفحين!"
+    # "الشرح الكامل في الوصف 👇"
+    sub_y = badge_y + h_pill_h + 26
+    sub_font = ImageFont.truetype(str(settings.font_path), 30)
+    try:
+        sub_font.set_variation_by_name("Bold")
+    except (AttributeError, OSError, ValueError):
+        pass
 
+    sub_line1 = "تركيزك أعمق من 90% من المتصفحين!"
+    sub_line2 = "الشرح الكامل في الوصف 👇"
+
+    s1_vis = _display_text(sub_line1)
+    s2_vis = _display_text(sub_line2)
+
+    s1_box = draw.textbbox((0, 0), s1_vis, font=sub_font)
+    s2_box = draw.textbbox((0, 0), s2_vis, font=sub_font)
+
+    s1_w, s1_h = s1_box[2] - s1_box[0], s1_box[3] - s1_box[1]
+    s2_w, s2_h = s2_box[2] - s2_box[0], s2_box[3] - s2_box[1]
+
+    card_w = min(max(s1_w, s2_w) + 64, max_safe_width)
+    card_h = s1_h + s2_h + 46
+    card_x = (settings.width - card_w) // 2
+
+    draw.rounded_rectangle(
+        (card_x, sub_y, card_x + card_w, sub_y + card_h),
+        radius=20,
+        fill="#0d1726",
+        outline="#FFD700",
+        width=2,
+    )
+
+    draw.text(
+        (card_x + (card_w - s1_w) // 2, sub_y + 16 - s1_box[1]),
+        s1_vis,
+        font=sub_font,
+        fill="#FFFFFF",
+    )
+    draw.text(
+        (card_x + (card_w - s2_w) // 2, sub_y + 20 + s1_h + 10 - s2_box[1]),
+        s2_vis,
+        font=sub_font,
+        fill="#FFD700",
+    )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="PNG")
 
 
@@ -588,7 +560,7 @@ def render_v2_video(
     hook_audio_path: Path | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Render V2 with 12.8/9.8/9.8/9.8-second reading pages and an 8s ending."""
+    """Render V2 with five reading pages (57.0s total) and a 2.8s gamified 100% brain overcharge ending (59.8s total)."""
     ffmpeg = find_ffmpeg()
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -678,31 +650,48 @@ def render_v2_video(
         # Select independently for each render; keep the pool specific to V2.
         music_track = select_v2_music(settings.music_dir)
 
-        filter_parts: list[str] = [
-            f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base]",
-            f"[1:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS[p1]",
-            f"[2:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[1]}/TB[p2]",
-            f"[3:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[2]}/TB[p3]",
-            f"[4:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS+{bounds[3]}/TB[p4]",
-            f"[5:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[conc]",
-            f"[base][p1]overlay=0:0:enable='lt(t,{bounds[1]:.1f})'[c1]",
-            f"[c1][p2]overlay=0:0:enable='gte(t,{bounds[1]:.1f})*lt(t,{bounds[2]:.1f})'[c2]",
-            f"[c2][p3]overlay=0:0:enable='gte(t,{bounds[2]:.1f})*lt(t,{bounds[3]:.1f})'[c3]",
-            f"[c3][p4]overlay=0:0:enable='gte(t,{bounds[3]:.1f})*lt(t,{reading_end:.1f})'[c4]",
-            f"[c4][conc]overlay=0:0:enable='gte(t,{reading_end:.1f})'[c5]",
-        ]
-
+        conc_input_idx = len(page_pngs) + 1
         final_cmd = [
             ffmpeg, "-hide_banner", "-loglevel", "error",
             "-i", str(top_path),
-            "-i", str(page_pngs[0]),
-            "-i", str(page_pngs[1]),
-            "-i", str(page_pngs[2]),
-            "-i", str(page_pngs[3]),
-            "-i", str(conc_png),
         ]
+        for p_png in page_pngs:
+            final_cmd.extend(["-i", str(p_png)])
+        final_cmd.extend(["-i", str(conc_png)])
 
-        next_input_idx = 6
+        next_input_idx = conc_input_idx + 1
+
+        filter_parts: list[str] = [
+            f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[base]",
+        ]
+        for i in range(len(page_pngs)):
+            input_idx = i + 1
+            pts_offset = f"+{bounds[i]}/TB" if bounds[i] > 0 else ""
+            filter_parts.append(
+                f"[{input_idx}:v]pad={settings.width}:{settings.height}:0:{settings.top_height}:color=black,fps={settings.fps},setpts=PTS-STARTPTS{pts_offset}[p{i + 1}]"
+            )
+        filter_parts.append(
+            f"[{conc_input_idx}:v]loop=loop=-1:size=1:start=0,fps={settings.fps},setpts=N/({settings.fps}*TB)[conc]"
+        )
+
+        prev_stream = "[base]"
+        for i in range(len(page_pngs)):
+            curr_stream = f"[c{i + 1}]"
+            start_t = bounds[i]
+            end_t = bounds[i + 1]
+            if i == 0:
+                enable_expr = f"lt(t,{end_t:.1f})"
+            else:
+                enable_expr = f"gte(t,{start_t:.1f})*lt(t,{end_t:.1f})"
+            filter_parts.append(
+                f"{prev_stream}[p{i + 1}]overlay=0:0:enable='{enable_expr}'{curr_stream}"
+            )
+            prev_stream = curr_stream
+
+        conc_stream = f"[c{len(page_pngs) + 1}]"
+        filter_parts.append(
+            f"{prev_stream}[conc]overlay=0:0:enable='gte(t,{reading_end:.1f})'{conc_stream}"
+        )
 
         # Check if Prussian Airbrush Frame asset is present
         has_frame = bool(settings.brand_frame_path and settings.brand_frame_path.exists())
@@ -711,7 +700,7 @@ def render_v2_video(
             final_cmd.extend(["-i", str(settings.brand_frame_path)])
             next_input_idx += 1
             filter_parts.extend([
-                "[c5][0:v]overlay=0:0[inner_full]",
+                f"{conc_stream}[0:v]overlay=0:0[inner_full]",
                 f"color=c=black:s={settings.width}x{settings.height}:r={settings.fps}:d={total_duration}[canvas_base]",
                 "[inner_full]scale=972:1728:flags=lanczos[scaled_inner]",
                 "[canvas_base][scaled_inner]overlay=54:96[padded_video]",
@@ -719,18 +708,18 @@ def render_v2_video(
                 "[padded_video][frame_v]overlay=0:0[vout]",
             ])
         else:
-            filter_parts.append("[c5][0:v]overlay=0:0[vout]")
+            filter_parts.append(f"{conc_stream}[0:v]overlay=0:0[vout]")
 
         # Audio configuration:
         # Hook voiceover starts at t=0.
-        # Music track plays with ducking during hook narration, then fades out before 42.2s.
-        # Outro voiceover starts at t=42.2s during the 8.0s conclusion/CTA page.
+        # Music track plays with ducking during hook narration, and continues smoothly until total_duration with a gentle 0.5s fade-out.
+        # Outro voiceover is completely removed on the 2.8s overcharge conclusion page.
         has_hook_audio = bool(hook_audio_path and hook_audio_path.exists())
-        outro_voice = settings.outro_voiceover_path
-        has_outro = bool(outro_voice and outro_voice.exists())
+        has_outro = False
+        outro_voice = None
 
-        fade_dur = 2.0
-        fade_st = reading_end - fade_dur
+        fade_dur = 0.5
+        fade_st = total_duration - fade_dur
 
         mix_inputs: list[str] = []
 
@@ -751,7 +740,7 @@ def render_v2_video(
                 tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
 
                 filter_parts.append(
-                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={total_duration:.1f},"
                     f"volume='if(lt(t,{voice_dur:.2f}), 0.12, min(0.70, 0.12 + (0.70-0.12)*(t-{voice_dur:.2f})/0.6))':eval=frame,"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[ducked_music]"
                 )
@@ -760,7 +749,7 @@ def render_v2_video(
                 seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "v2"))
                 tempo_jitter = 0.995 + ((seed_val % 11) * 0.001)
                 filter_parts.append(
-                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={reading_end:.1f},volume={settings.music_volume},"
+                    f"[{music_idx}:a]atempo={tempo_jitter:.4f},atrim=duration={total_duration:.1f},volume={settings.music_volume},"
                     f"afade=t=out:st={fade_st:.2f}:d={fade_dur:.2f},apad=whole_dur={total_duration}[bg_music]"
                 )
                 mix_inputs.append("[bg_music]")
@@ -773,17 +762,6 @@ def render_v2_video(
                 f"[{hook_idx}:a]volume=1.3,apad=whole_dur={total_duration}[hook_audio]"
             )
             mix_inputs.append("[hook_audio]")
-
-        if has_outro:
-            final_cmd.extend(["-i", str(outro_voice)])
-            outro_idx = next_input_idx
-            next_input_idx += 1
-            seed_val = sum(ord(c) for c in str((metadata or {}).get("id") or (metadata or {}).get("title") or "outro"))
-            outro_jitter = 1.084 * (1.002 - ((seed_val % 5) * 0.001))
-            filter_parts.append(
-                f"[{outro_idx}:a]atempo={outro_jitter:.4f},volume=1.1,adelay={round(reading_end * 1000)}|{round(reading_end * 1000)},apad=whole_dur={total_duration}[outro_audio]"
-            )
-            mix_inputs.append("[outro_audio]")
 
         if len(mix_inputs) > 1:
             filter_parts.append(
@@ -853,7 +831,7 @@ def render_v2_video(
             "tts_narration": has_hook_audio,
             "outro_voiceover": has_outro,
             "timeline": {
-                **{f"page_{i + 1}": f"0:{bounds[i]:04.1f}-0:{bounds[i + 1]:04.1f}" for i in range(4)},
-                "conclusion": f"0:{reading_end:04.1f}-0:{total_duration:04.1f}",
+                **{f"page_{i + 1}": f"{int(bounds[i] // 60)}:{bounds[i] % 60:04.1f}-{int(bounds[i + 1] // 60)}:{bounds[i + 1] % 60:04.1f}" for i in range(len(editorial.pages))},
+                "conclusion": f"{int(reading_end // 60)}:{reading_end % 60:04.1f}-{int(total_duration // 60)}:{total_duration % 60:04.1f}",
             },
         }

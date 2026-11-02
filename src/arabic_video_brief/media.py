@@ -62,7 +62,12 @@ def _extract_captions(auto_subs: dict[str, Any] | None) -> str:
         json3 = next((s for s in formats if s.get("ext") == "json3"), None)
         if json3 and json3.get("url"):
             try:
-                req = Request(json3["url"], headers={"User-Agent": "Mozilla/5.0"})
+                req = Request(
+                    json3["url"],
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    },
+                )
                 with urlopen(req, timeout=15) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     words: list[str] = []

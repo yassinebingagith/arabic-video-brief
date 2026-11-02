@@ -30,7 +30,7 @@ class HookCandidate:
 class V2EditorialPackage:
     post_title_ar: str
     summary_ar: str
-    pages: list[str]  # Exactly 4 pages
+    pages: list[str]  # Exactly 5 pages
     hook: HookCandidate
     conclusion_ar: str
     conclusion_highlights: list[str]
@@ -222,18 +222,117 @@ def split_half_into_two_pages(half_text: str, half_index: int, settings: Setting
     return [pa, pb]
 
 
+def split_text_into_five_pages(text: str, settings: Settings) -> list[str]:
+    """
+    Splits or formats text into 5 balanced pages (~30-40 words each)
+    following the 5-beat arc. If LLM is available, uses LLM to rebalance.
+    Otherwise, uses deterministic sentence grouping into 5 pages.
+    """
+    clean_text = text.strip()
+    if not clean_text:
+        return ["."] * 5
+
+    paragraphs = [p.strip() for p in clean_text.split("\n") if p.strip()]
+    if len(paragraphs) == 5:
+        return paragraphs
+
+    if settings.gemini_api_key or settings.vyceai_api_key or settings.seekai_api_key or settings.apinex_api_key:
+        prompt = f"""
+أعد صياغة وتقسيم النص العربي التالي إلى 5 صفحات متسلسلة ومتوازنة (بين 30 و 40 كلمة لكل صفحة، بإجمالي 160–180 كلمة).
+القواعد الصارمة:
+{REWRITE_STYLE}
+1. البنية القصصية والتفسيرية المحددة للصفحات الخمس:
+   - الصفحة 1 (المدخل والورطة): فخ يومي، معضلة مألوفة، أو مدخل بديهي يجذب المشاهد فوراً.
+   - الصفحة 2 (الشاهد الحقيقي والركيزة الملموسة): اقتباس حقيقي مباشر، قصة/موقف شخصي من المتحدث، تجربة علمية محددة بأرقامها، أو مفارقة حادة من صلب النص. ممنوع الكلام النظري العام هنا.
+   - الصفحة 3 (الآلية العميقة والتفسير): شرح كيف ولماذا تحدث الظاهرة بكلمات دقيقة وواضحة.
+   - الصفحة 4 (الأثر والتعميق والتكلفة الخفية): توسيع أثر الفكرة أو ما يحدث عند تجاهلها أو إطار لفهمها.
+   - الصفحة 5 (التحول العملي والحل): قاعدة سلوكية قابلة للتطبيق اليومي أو خطوة ملموسة في الحياة الواقعية.
+2. الأمانة التامة للنص الأصلي: يُمنع منعاً باتاً اختراع دراسات أو قصص أو تفاصيل غير موجودة. استخرج الشاهد الملموس من صلب النص.
+3. يمنع قطع الجملة بين الصفحات. كل صفحة يجب أن تبدأ بجملة مستقلة وتنتهي بنقطة تامة.
+4. في كل صفحة، أحِط عبارتين إلى 3 عبارات رئيسية (كل منها 2 إلى 3 كلمات) بوسوم <hl>...</hl> لتمييزها بنمط قلم التظليل، مع إبقاء حروف العطف والجر المتصلة (و، ف، ب، ل، ك) داخل الوسم دائماً.
+5. يُمنع منعاً باتاً أي توجيه لصندوق الوصف (مثل 'التفاصيل في الوصف').
+
+النص الأصلي:
+{clean_text}
+
+أعد الناتج بصيغة JSON فقط:
+{{
+  "pages": [
+    "نص الصفحة الأولى",
+    "نص الصفحة الثانية",
+    "نص الصفحة الثالثة",
+    "نص الصفحة الرابعة",
+    "نص الصفحة الخامسة"
+  ]
+}}
+""".strip()
+        try:
+            res = call_llm(prompt, settings, temperature=0.2)
+            match = re.search(r"(\{.*\})", res, re.DOTALL)
+            if match:
+                data = json.loads(match.group(1))
+                candidate_pages = data.get("pages")
+                if isinstance(candidate_pages, list) and len(candidate_pages) == 5:
+                    cleaned_candidates = [str(p).strip() for p in candidate_pages]
+                    if all(word_count(re.sub(r"</?hl>", "", p)) >= 15 for p in cleaned_candidates):
+                        for idx, p in enumerate(cleaned_candidates):
+                            if not re.search(r"[.!?؟؛]$", p):
+                                cleaned_candidates[idx] = p + "."
+                        return cleaned_candidates
+        except Exception as err:
+            logger.warning("LLM 5-page rebalancing failed: %s; using deterministic fallback", err)
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?؟؛])\s+", clean_text) if s.strip()]
+    if len(sentences) >= 5:
+        pages: list[list[str]] = [[] for _ in range(5)]
+        total_words = word_count(clean_text)
+        target = max(1, total_words / 5.0)
+        curr_bucket = 0
+        curr_words = 0
+        for sent in sentences:
+            sw = word_count(sent)
+            if curr_bucket < 4 and len(pages[curr_bucket]) > 0 and (curr_words + sw > target * 1.15):
+                curr_bucket += 1
+                curr_words = 0
+            pages[curr_bucket].append(sent)
+            curr_words += sw
+
+        result = [" ".join(p).strip() for p in pages]
+        for i in range(5):
+            if not result[i]:
+                result[i] = "نقطة إضافية."
+            if not re.search(r"[.!?؟؛]$", result[i]):
+                result[i] += "."
+        return result
+
+    words = clean_text.split()
+    n = len(words)
+    chunk_size = max(1, n // 5)
+    result = []
+    for i in range(5):
+        if i == 4:
+            chunk = words[i * chunk_size:]
+        else:
+            chunk = words[i * chunk_size:(i + 1) * chunk_size]
+        text_chunk = " ".join(chunk).strip() or "نقطة توضيحية."
+        if not re.search(r"[.!?؟؛]$", text_chunk):
+            text_chunk += "."
+        result.append(text_chunk)
+    return result
+
+
 VOICEOVER_SUFFIX = "ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف"
 
 
 def generate_v2_conclusion_and_cta(
     metadata: dict[str, Any],
     summary_ar: str,
-    four_pages: list[str],
+    five_pages: list[str],
     settings: Settings,
 ) -> tuple[str, list[str], str, str]:
     """Compatibility entry point: the former conclusion is now a question."""
     from ..ending import resolve_ending_question
-    question = resolve_ending_question({}, metadata, summary_ar or ' '.join(four_pages), settings)
+    question = resolve_ending_question({}, metadata, summary_ar or ' '.join(five_pages), settings)
     return question, [], "احفظها وشاركها مع أصدقائك، وتابع الصفحة للمزيد", "السر الأهم والخطوات التطبيقية في الوصف بالأسفل 👇"
 
 
@@ -244,7 +343,7 @@ def build_v2_editorial_package(
 ) -> V2EditorialPackage:
     """
     Main entry point for V2 editorial production.
-    Takes the base 140-160 word summary, splits into 4 complete-sentence pages,
+    Takes the base 140-160 word summary, splits into 5 complete-sentence pages,
     preserves the title + suffix voiceover, and resolves the ending question & CTA.
     """
     orig_title = str(metadata.get("original_title") or "").strip()
@@ -266,35 +365,42 @@ def build_v2_editorial_package(
         post_title_ar = raw_title
     summary_ar = base_analysis.get("summary_ar", "").strip().replace("{", "").replace("}", "")
 
-    # If pages are already pre-computed in base_analysis (e.g. Brainstorm mode), use them directly
-    if base_analysis.get("pages") and len(base_analysis["pages"]) == 4:
+    # If pages are already pre-computed in base_analysis (e.g. Brainstorm mode or LLM analysis), use them directly
+    if base_analysis.get("pages") and len(base_analysis["pages"]) == 5:
         raw_pages = list(base_analysis["pages"])
-        four_pages = [
+        five_pages = [
             str(p.get("text", "") if isinstance(p, dict) else p).strip().replace("{", "").replace("}", "")
             for p in raw_pages
         ]
-        # Export the actual reading copy, stripping <hl> tags for plain text summary_ar.
-        summary_ar = re.sub(r"</?hl>", "", "\n\n".join(four_pages))
-    else:
-        # Base summary must have two semantic halves
-        paragraphs = [p.strip() for p in summary_ar.split("\n") if p.strip()]
-        if len(paragraphs) >= 2:
-            half_one = paragraphs[0]
-            half_two = paragraphs[1]
-        else:
-            # Split roughly at sentence midpoint
-            sents = [s.strip() for s in re.split(r"(?<=[.!?؟؛])\s+", summary_ar) if s.strip()]
+        summary_ar = re.sub(r"</?hl>", "", "\n\n".join(five_pages))
+    elif base_analysis.get("pages") and len(base_analysis["pages"]) == 4:
+        raw_pages = [
+            str(p.get("text", "") if isinstance(p, dict) else p).strip().replace("{", "").replace("}", "")
+            for p in base_analysis["pages"]
+        ]
+        lens = [len(p.split()) for p in raw_pages]
+        max_idx = lens.index(max(lens))
+        longest = raw_pages[max_idx]
+        sents = [s.strip() for s in re.split(r"(?<=[.!?؟؛])\s+", longest) if s.strip()]
+        if len(sents) >= 2:
             mid = len(sents) // 2
-            half_one = " ".join(sents[:mid])
-            half_two = " ".join(sents[mid:])
-
-        # Split Half 1 into Page 1 and Page 2 (35-40 words each)
-        p1, p2 = split_half_into_two_pages(half_one, half_index=1, settings=settings)
-
-        # Split Half 2 into Page 3 and Page 4 (35-40 words each)
-        p3, p4 = split_half_into_two_pages(half_two, half_index=2, settings=settings)
-
-        four_pages = [p1, p2, p3, p4]
+            p_a = " ".join(sents[:mid]).strip()
+            p_b = " ".join(sents[mid:]).strip()
+        elif len(longest.split()) >= 2:
+            words = longest.split()
+            mid = len(words) // 2
+            p_a = " ".join(words[:mid]).strip()
+            p_b = " ".join(words[mid:]).strip()
+        else:
+            p_a = longest
+            p_b = longest
+        if not re.search(r"[.!?؟؛]$", p_a): p_a += "."
+        if not re.search(r"[.!?؟؛]$", p_b): p_b += "."
+        five_pages = raw_pages[:max_idx] + [p_a, p_b] + raw_pages[max_idx + 1:]
+        summary_ar = re.sub(r"</?hl>", "", "\n\n".join(five_pages))
+    else:
+        five_pages = split_text_into_five_pages(summary_ar, settings)
+        summary_ar = re.sub(r"</?hl>", "", "\n\n".join(five_pages))
 
     # Voiceover: translated title + description-directed suffix; visual content is unchanged.
     clean_title_for_tts = re.sub(r"[.!؟?\-_|]+$", "", post_title_ar).strip()
@@ -325,7 +431,7 @@ def build_v2_editorial_package(
         )
 
     from ..ending import resolve_v2_footer
-    conclusion = resolve_v2_footer(base_analysis, metadata, ' '.join(four_pages), settings)
+    conclusion = resolve_v2_footer(base_analysis, metadata, ' '.join(five_pages), settings)
     conclusion_hl = [conclusion]
     legacy = base_analysis.get("conclusion")
     cta_fields = legacy if isinstance(legacy, dict) else base_analysis
@@ -344,7 +450,7 @@ def build_v2_editorial_package(
         },
         "pages": [
             {"page": i + 1, "words": word_count(re.sub(r"</?hl>", "", p)), "text": p}
-            for i, p in enumerate(four_pages)
+            for i, p in enumerate(five_pages)
         ],
         "conclusion": {
             "text": conclusion,
@@ -360,7 +466,7 @@ def build_v2_editorial_package(
     return V2EditorialPackage(
         post_title_ar=post_title_ar,
         summary_ar=summary_ar,
-        pages=four_pages,
+        pages=five_pages,
         hook=hook,
         conclusion_ar=conclusion,
         conclusion_highlights=conclusion_hl,

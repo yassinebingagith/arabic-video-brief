@@ -24,7 +24,7 @@ def main():
     source=root/"source.mp4"
     subprocess.run([tools["FFMPEG_BIN"],"-v","error","-f","lavfi","-i","testsrc2=s=640x360:r=10:d=5","-c:v","libx264","-pix_fmt","yuv420p",str(source)],check=True)
     settings=replace(Settings(),fps=10,page_duration=1.8,cta_duration=1,duration=4.6,
-                     first_page_duration_v2=1.8,page_duration_v2=1.2,conclusion_duration=1,duration_v2=6.4)
+                     first_page_duration_v2=1.8,page_duration_v2=1.2,conclusion_duration=1,duration_v2=7.6)
     text="تظهر الكلمات بهدوء، ثم تتضح <hl>الفكرة الأساسية</hl> أمام القارئ، وتبقى <hl>العبارة المهمة</hl> ظاهرة."
     question="أي فكرة تستحق أن تمنحها المزيد من وقتك؟"
     results=[]
@@ -34,12 +34,12 @@ def main():
             details=render_video(source,None,text,text,{"start_seconds":0},output,settings,
                 metadata={"title":"Synthetic fixture","id":"smoke"},post_title="تجربة الكتابة العربية",ending_question=question)
         else:
-            editorial=V2EditorialPackage("تجربة الكتابة العربية",text,[text]*4,HookCandidate("","","","",{},0,""),question,[],"احفظها لتقرأها لاحقاً","التفاصيل في الوصف",{})
+            editorial=V2EditorialPackage("تجربة الكتابة العربية",text,[text]*5,HookCandidate("","","","",{},0,""),question,[],"احفظها لتقرأها لاحقاً","التفاصيل في الوصف",{})
             details=render_v2_video(source,None,editorial,{"start_seconds":0},output,settings,metadata={"title":"Synthetic fixture","id":"smoke"})
         assert details["renderer"]=="python-whiteboard"
         project=output.parent/details["render_project"]
         data=json.loads((project/"project.json").read_text(encoding="utf-8"))
-        assert len(data["pages"])==(2 if version=="v1" else 4)
+        assert len(data["pages"])==(2 if version=="v1" else 5)
         assert all((project/file).is_file() for file in data["assets"].values())
         assert (project/"render.py").is_file()
         recipe=project/"pages/page-1/motion.json"
@@ -54,7 +54,7 @@ def main():
         assert probe["format"]["tags"]["major_brand"]=="mp42"
         assert probe["format"]["tags"].get("comment")=="CapCut"
         assert next(s for s in probe["streams"] if s["codec_type"]=="video")["tags"].get("encoder")=="CapCut"
-        assert abs(float(probe["format"]["duration"])-(4.6 if version=="v1" else 6.4))<.05
+        assert abs(float(probe["format"]["duration"])-(4.6 if version=="v1" else 7.6))<.05
         results.append({"version":version,"output":str(output),"renderer":details["renderer"],"page_render_seconds":details["page_render_seconds"],"progressive_white_pixels":counts})
     (root/"result.json").write_text(json.dumps(results,indent=2),encoding="utf-8")
     print(json.dumps({"passed":True,"results":results}))

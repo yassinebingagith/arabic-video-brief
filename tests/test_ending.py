@@ -13,7 +13,7 @@ def test_authored_question_needs_no_extra_model_call(monkeypatch):
         raise AssertionError("Authored question must not invoke a model")
     monkeypatch.setattr("arabic_video_brief.v2.editorial.call_llm", unexpected)
     assert resolve_ending_question({"ending_question_ar": QUESTION}, {}, "", Settings()) == QUESTION
-    package = build_v2_editorial_package({"post_title_ar": "التدريب", "pages": ["مثال."] * 4,
+    package = build_v2_editorial_package({"post_title_ar": "التدريب", "pages": ["مثال."] * 5,
                                          "ending_question_ar": QUESTION}, {}, Settings())
     assert package.conclusion_ar == QUESTION
 
@@ -48,7 +48,7 @@ def test_rerender_reuses_saved_question_and_updates_manifest(tmp_path, monkeypat
     (tmp_path / "ending-question-ar.txt").write_text(QUESTION, encoding="utf-8")
     if version == "v2":
         (tmp_path / "summary-pages.json").write_text(json.dumps([
-            {"text": "مثال."} for _ in range(4)
+            {"text": "مثال."} for _ in range(5)
         ]), encoding="utf-8")
 
     def unexpected(*args, **kwargs):

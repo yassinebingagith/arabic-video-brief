@@ -60,18 +60,18 @@ class Settings:
     music_fade_out: float = 2.0
 
     # V2 adds two seconds per reading page for whiteboard writing; opening overlaps page 1.
-    duration_v2: float = 50.2
+    duration_v2: float = 59.8
     hook_duration: float = 2.5
-    first_page_duration_v2: float = 12.8
-    page_duration_v2: float = 9.8
-    conclusion_duration: float = 8.0
+    first_page_duration_v2: float = 13.8
+    page_duration_v2: float = 10.8
+    conclusion_duration: float = 2.8
     page_v2_min_words: int = 30
-    page_v2_max_words: int = 44
+    page_v2_max_words: int = 40
     music_duck_volume: float = 0.35  # ~6-8 dB ducking during hook narration
 
     @property
     def v2_page_boundaries(self) -> tuple[float, ...]:
-        return (0.0,) + tuple(round(self.first_page_duration_v2 + i * self.page_duration_v2, 1) for i in range(4))
+        return (0.0,) + tuple(round(self.first_page_duration_v2 + i * self.page_duration_v2, 1) for i in range(5))
 
     @property
     def gemini_api_key(self) -> str | None:

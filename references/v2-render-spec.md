@@ -1,55 +1,67 @@
-# V2 Render Specification (50.2-Second Format)
+# V2 Render Specification (59.8-Second Format)
 
-Production reading pages use the mandatory [Python/FFmpeg whiteboard engine](python-whiteboard.md), with a complete editable render-project inside each episode folder. The specifications below describe the preserved composition and settled page appearance; reading text is progressively written rather than shown as a static slide.
+## Overview & Timeline Structure
+- **Format:** 1080x1920 (9:16 vertical), 30 fps, H.264/AAC MP4.
+- **Top Panel:** y=0 to y=760 (1080x760 px).
+- **Lower Panel:** y=760 to y=1920 (1080x1160 px).
+- **Total Duration:** 59.8 seconds (57.0s reading across 5 pages + 2.8s gamified outro).
+- **Audio Mix:**
+  - **Hook TTS Voiceover:** (`work/hook_tts.mp3`) starts at `t=0.0s` (`volume=1.3`).
+  - **Selected V2 Background Music:** ducked to ~35% volume during hook narration (0-4.5s), then restores to standard volume (`volume=0.85`), playing continuously across all 5 reading slides and the final outro slide, with a gentle 0.5s fade-out at the very end (`st=59.3s`, `d=0.5s`).
+  - **Outro Voiceover:** Completely removed. The background music carries through to the end of the video.
 
-## Overview
-- **Total Duration:** 50.2 seconds.
-- **Resolution & Aspect Ratio:** 1080×1920 (9:16 vertical MP4).
-- **Audio Architecture:**
-  - **Hook Narration:** ElevenLabs TTS Arabic voiceover at `t=0s` (`volume=1.3`, full cadence preserved).
-  - **Background Instrumental:** (randomly choose `naruto_sadness_and_sorrow.mp3` or `godfather_0013.mp3` per render) ducked to `0.12` during speech, smoothly swelling to `0.70` over 0.6s when narration ends.
-  - **Music Outro Fade:** Background music fades out smoothly before the conclusion page (40.2s – 42.2s).
-  - **Outro Voiceover:** (`assets/music/last voicever.mp3`) starts at `t=42.2s` (`volume=1.1`) and plays for 8.0 seconds during the Conclusion & CTA screen (42.2s – 50.2s).
-  - **amix Parameters:** Configured with `normalize=0` so vocal clarity and amplitude are never attenuated.
-- **Source Audio:** 100% muted throughout.
+---
 
-## Top Panel & Metadata Overlay (1080×760)
-- **Seamless Alpha Gradient:** Bottom video edge feathers from `y=490` to `y=760` into pure `#000000` black, eliminating hard horizontal cuts and avoiding Instagram's "video has a border" penalty.
-- **Floating Glassmorphic Badge (1016×176px at y=556, r=26px):**
-  - **RTL / BiDi Awareness:**
-    - **Arabic Content (RTL):** YouTube red play icon anchored on the right (`x = 924`), multi-line title right-aligned, and metadata elements ordered Right-to-Left: `[Channel Name]` • `[View Count]` • `[Upload Date]`.
-    - **English Content (LTR):** YouTube red play icon on the left (`x = 56`), title left-aligned, and metadata elements ordered Left-to-Right.
-  - **Full Multi-line Title:** Dynamically wrapped across 2–3 balanced lines (26px/23px Bold) with zero ellipsis (`...`) truncation.
-  - **Channel, Views & Date:** Clearly rendered in 22px/21px semi-bold typography with centered bullet separators.
+## Detailed Timeline Chronology
 
-## Timeline
-1. **0:00 – 0:12.8 (12.8s) — Page 1:**
-   - Top panel: 0:00–0:02.5 source card with kinetic Ken Burns push-in zoom and floating translucent metadata badge; 0:02.5–0:12.8 video playback begins with seamless bottom gradient blend and floating metadata badge.
-   - Bottom panel: Page 1 Arabic summary (30–44 words), category tag, and main title in Fusha.
-   - Hook audio narration starts at t=0s.
-2. **0:12.8 – 0:22.6 (9.8s) — Page 2:**
-   - Top panel: Video stream continues (seamless gradient blend & floating badge).
-   - Bottom panel: Page 2 Arabic summary (30–44 words), counter `٢/٤`.
-3. **0:22.6 – 0:32.4 (9.8s) — Page 3:**
-   - Top panel: Video stream continues (seamless gradient blend & floating badge).
-   - Bottom panel: Page 3 Arabic summary (30–44 words), counter `٣/٤`.
-4. **0:32.4 – 0:42.2 (9.8s) — Page 4:**
-   - Top panel: Video stream continues (seamless gradient blend & floating badge; total 39.7s video stream).
-   - Bottom panel: Page 4 Arabic summary (30–44 words), counter `٤/٤`. Music fades out between 40.2s and 42.2s.
-5. **0:42.2 – 0:50.2 (8.0s) — Conclusion & CTA Screen:**
-   - Top panel: Thumbnail card with kinetic Ken Burns push-in zoom and floating metadata badge.
-   - Bottom panel: Full-page conclusion screen:
-     - Gold-highlighted source-specific Footer Action / Question replacing the punchline: 4–18 words, at most 140 characters. Tie it to a concrete explanation on the pages. Avoid generic “ما رأيك؟”, declarative conclusions and swipe instructions.
-     - Secondary CTA pill: `احفظ الفيديو لتستفيد منه لاحقاً`.
-     - Prominent Gold Badge (`#F5C518`) with down arrow: `السر الأهم والخطوات التطبيقية بانتظارك في الوصف بالأسفل`.
-     - 130px circular Capsule Fikr brand logo.
-     - Dedicated outro voiceover (`last voicever.mp3`) plays throughout the entire 8.0s CTA page.
+1. **0:00 - 0:13.8 (13.8s) - Page 1 (Everyday Dilemma / Relatable Trap):**
+   - Top panel: 0:00-0:02.5 source card with kinetic Ken Burns push-in zoom and floating translucent metadata badge; 0:02.5-0:13.8 video playback begins with seamless bottom gradient blend and floating metadata badge.
+   - Lower panel: Translated Arabic title header block + Category tag + 6-line summary paragraph.
+   - Visual Motion: Entire pre-wrapped paragraph fades in all at once over 0.35s (opacity 0% to 100% with subtle 12px upward slide). Text remains 100% visible and static. Key phrase starts in white; at 1.5s, animates transition to yellow highlight (#FFD700) smoothly from right to left across words over 0.6s (finishing at 2.1s).
+   - Bottom indicator: Continuous filling brain fills from 0% to 20%, slide timer bar fills 0-100%, page badge "1 / 5".
 
+2. **0:13.8 - 0:24.6 (10.8s) - Page 2 (Dedicated Concrete Anchor):**
+   - Top panel: Excerpt continues playing cleanly with subtle edge framing.
+   - Lower panel: Dedicated Concrete Anchor (quote, personal anecdote, study with numbers, or paradox).
+   - Visual Motion: Instant paragraph fade (0.35s, 12px slide). Highlighter sweep at 1.5s over 0.6s (finishing at 2.1s). Remainder of slide holds 100% static for natural reading.
+   - Bottom indicator: Continuous filling brain fills from 20% to 40%, slide timer bar fills 0-100%, page badge "2 / 5".
 
-The opening narration remains the translated source title plus the description-directed suffix specified below; do not add full-summary or ending-question narration. Save canonical `ending-text-ar.txt`, with the same footer in `ending-question-ar.txt` and `conclusion-ar.txt` for compatibility. Page styling, word counts, number formatting, the blue frame, and the recorded 8-second outro remain unchanged. Thumbnail direction follows the editorial reference. Each of the four reading pages receives two additional seconds: 10.8→12.8s and 7.8→9.8s. Extend whiteboard writing by the same amount; preserve the full copy and the eight-second ending.
+3. **0:24.6 - 0:35.4 (10.8s) - Page 3 (Core Mechanism / Root Cause):**
+   - Lower panel: Explanatory paragraph on underlying mechanism.
+   - Visual Motion: Instant paragraph fade (0.35s, 12px slide). Highlighter sweep at 1.5s over 0.6s (finishing at 2.1s). 100% static hold until transition.
+   - Bottom indicator: Continuous filling brain fills from 40% to 60%, slide timer bar fills 0-100%, page badge "3 / 5".
 
-## Opening narration and music selection
-Narrate the translated title, then `ملخص الفكرة في ثوانٍ، والتفاصيل الكاملة في صندوق الوصف.` This changes only the ElevenLabs script, not the displayed page copy. The configured music pool contains the original Sadness and Sorrow track and `godfather_0013.mp3`, sourced from https://www.youtube.com/watch?v=AJgE_dLWsuQ beginning at 0:13. Choose independently with equal probability on each render; repeats are allowed. Preserve current ducking and fade music over 40.2–42.2s. Loop the chosen input when needed so neither track ends early. Record the chosen filename in the render manifest.
+4. **0:35.4 - 0:46.2 (10.8s) - Page 4 (Deepening Insight / Framework / Hidden Cost):**
+   - Lower panel: Deeper insight / framework / systemic impact.
+   - Visual Motion: Instant paragraph fade (0.35s, 12px slide). Highlighter sweep at 1.5s over 0.6s (finishing at 2.1s). 100% static hold until transition.
+   - Bottom indicator: Continuous filling brain fills from 60% to 80%, slide timer bar fills 0-100%, page badge "4 / 5".
 
-## Reading-copy direction
-Follow [v1-v2-editorial-style.md](v1-v2-editorial-style.md) for source-specific explanatory writing and hybrid thumbnail direction. Preserve the timeline and rendering geometry above.
+5. **0:46.2 - 0:57.0 (10.8s) - Page 5 (Actionable Shift / Practical Takeaway):**
+   - Lower panel: Concrete takeaway / actionable behavioral shift.
+   - Visual Motion: Instant paragraph fade (0.35s, 12px slide). Highlighter sweep at 1.5s over 0.6s (finishing at 2.1s). 100% static hold until transition.
+   - Bottom indicator: Continuous filling brain fills from 80% to 100%, slide timer bar fills 0-100%, page badge "5 / 5".
+
+6. **0:57.0 - 0:59.8 (2.8s) - Gamified "100% Brain Overcharge" Screen:**
+   - Top panel: Static source card / thumbnail with seamless gradient blend.
+   - Lower panel:
+     - Yellow conclusion question title at top with drop shadow.
+     - 1.12x scaled 100% full gold brain with dual aura bloom (wide gold outer glow + intense white core bloom).
+     - Gamified achievement badge text in crisp Arabic:
+       - Header gold pill: `⚡ اكتمل شحن الفكرة 100%`
+       - Dark card with gold outline:
+         `تركيزك أعمق من 90% من المتصفحين!`
+         `الشرح الكامل في الوصف 👇`
+   - Audio: Background music continues playing smoothly with a gentle 0.5s fade-out at 59.3s-59.8s. No outro voiceover.
+
+---
+
+## Continuous "Filling Brain" Progress Indicator
+- Position: Y=1680 (local y=920 in lower panel), centered horizontally.
+- Brain Icon: 72x76 px silhouette in dark blue panel. Smoothly filled from bottom to top with `#FFD700` synced frame-by-frame:
+  - Slide 1: 0% -> 20%
+  - Slide 2: 20% -> 40%
+  - Slide 3: 40% -> 60%
+  - Slide 4: 60% -> 80%
+  - Slide 5: 80% -> 100%
+- Timer & Badge: Underneath brain, a 160px horizontal progress bar (current slide timer) and an Arabic badge ("1", "2", "3", "4", "5").
+- Outro Screen Transition: Brain locks at 100%, scales 1.12x (82x86px), and activates dual aura bloom with the gamified achievement badge.
